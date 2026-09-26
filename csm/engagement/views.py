@@ -115,6 +115,16 @@ class CsatCreateView(_EngagementCreateView):
         kwargs["account"] = self.account
         return kwargs
 
+    def get_initial(self):
+        # Started from a contact's own menu, the rating is theirs. The form's
+        # queryset is this account's active contacts, so a pk from anywhere
+        # else simply selects nothing.
+        initial = super().get_initial()
+        contact = self.request.GET.get("contact", "")
+        if contact.isdigit():
+            initial["contact"] = contact
+        return initial
+
 
 class AdoptionCreateView(_EngagementCreateView):
     required_capability = cap.ADOPTION_RECORD

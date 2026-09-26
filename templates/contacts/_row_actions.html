@@ -1,7 +1,8 @@
 {% comment %}
-The three-dot menu for wherever a contact is listed in a table, mirroring
-accounts/_row_actions.html: edit, add a task, add a CSAT for their account,
-delete. Expects `contact` and `next`.
+The three-dot menu for wherever a contact is listed in a table: Task, Call,
+Meeting, CSAT, Edit, Delete - in that order, and bare nouns rather than "Add
+task", because the menu itself is the verb. The three kinds open the one task
+form with the kind and the contact preselected. Expects `contact` and `next`.
 {% endcomment %}
 {% if "contact.edit" in ability.capabilities or "task.create" in ability.capabilities or "csat.record" in ability.capabilities %}
   <div class="dropdown">
@@ -11,31 +12,41 @@ delete. Expects `contact` and `next`.
       <i class="bi bi-three-dots-vertical"></i>
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
-      {% if "contact.edit" in ability.capabilities %}
-        <li>
-          <a class="dropdown-item"
-             href="{% url 'contacts:edit' contact.pk %}?next={{ next|urlencode }}">
-            <i class="bi bi-pencil me-2"></i>Edit contact
-          </a>
-        </li>
-      {% endif %}
       {% if "task.create" in ability.capabilities %}
         <li>
           <a class="dropdown-item"
-             href="{% url 'tasks:create' contact.account_id %}?contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
-            <i class="bi bi-check2-square me-2"></i>Add task
+             href="{% url 'tasks:create' contact.account_id %}?task_type=MANUAL_NEXT_ACTION&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
+            <i class="bi bi-check2-square me-2"></i>Task
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' contact.account_id %}?task_type=CALL&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
+            <i class="bi bi-telephone me-2"></i>Call
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' contact.account_id %}?task_type=MEETING&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
+            <i class="bi bi-calendar-event me-2"></i>Meeting
           </a>
         </li>
       {% endif %}
       {% if "csat.record" in ability.capabilities %}
         <li>
           <a class="dropdown-item"
-             href="{% url 'engagement:csat_create' contact.account_id %}?next={{ next|urlencode }}">
-            <i class="bi bi-emoji-smile me-2"></i>Add CSAT
+             href="{% url 'engagement:csat_create' contact.account_id %}?contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
+            <i class="bi bi-emoji-smile me-2"></i>CSAT
           </a>
         </li>
       {% endif %}
       {% if "contact.edit" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'contacts:edit' contact.pk %}?next={{ next|urlencode }}">
+            <i class="bi bi-pencil me-2"></i>Edit
+          </a>
+        </li>
         <li><hr class="dropdown-divider"></li>
         <li>
           <a class="dropdown-item text-danger"
@@ -43,7 +54,7 @@ delete. Expects `contact` and `next`.
              hx-get="{% url 'contacts:delete' contact.pk %}?next={{ next|urlencode }}"
              hx-target="#confirm-modal .modal-content"
              data-bs-toggle="modal" data-bs-target="#confirm-modal">
-            <i class="bi bi-trash3 me-2"></i>Delete contact
+            <i class="bi bi-trash3 me-2"></i>Delete
           </a>
         </li>
       {% endif %}

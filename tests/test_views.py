@@ -1052,6 +1052,17 @@ def test_the_dashboard_renders_for_every_role(client, portfolio, people, role):
 
 
 @pytest.mark.parametrize("role", ["csm", "senior", "acm", "manager"])
+def test_the_accounts_tile_on_my_day_opens_the_account_list(client, portfolio, people, role):
+    """Every other tile on the row links somewhere; a count you cannot click
+    through to is the one the eye keeps landing on."""
+    login(client, people[role])
+    body = client.get(reverse("dashboard:index")).content.decode()
+    tile = body[body.index(">Accounts</div>"):]
+    tile = tile[: tile.index("</div></div>")]
+    assert f'class="stretched-link small" href="{reverse("accounts:list")}"' in tile
+
+
+@pytest.mark.parametrize("role", ["csm", "senior", "acm", "manager"])
 def test_the_account_page_renders_for_every_role(client, portfolio, people, role):
     account = portfolio["mine"] if role != "manager" else portfolio["mine"]
     login(client, people[role])

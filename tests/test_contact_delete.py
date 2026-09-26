@@ -122,3 +122,30 @@ def test_an_acm_gets_edit_and_delete_but_no_csat_on_the_row_menu(client, staff, 
     assert reverse("contacts:edit", args=[contact.pk]) in body
     assert reverse("contacts:delete", args=[contact.pk]) in body
     assert reverse("engagement:csat_create", args=[account.pk]) not in body
+
+
+def test_the_row_menu_reads_task_call_meeting_csat_edit_delete(client, staff, account):
+    """In that order, as bare nouns: the menu is the verb, so "Add" is noise."""
+    contact = Contact.objects.create(
+        account=account, full_name="Dana Farouk", influence="HIGH", interest="HIGH",
+    )
+    login(client, staff["csm"])
+    body = client.get(reverse("dashboard:index")).content.decode()
+    menu = body[body.index(f'aria-label="Actions for {contact.full_name}"'):]
+    menu = " ".join(menu[: menu.index("</ul>")].split())
+
+    labels = [f"</i>{word} </a>" for word in ("Task", "Call", "Meeting", "CSAT", "Edit", "Delete")]
+    positions = [menu.index(label) for label in labels]
+    assert positions == sorted(positions)
+    assert "Add " not in menu
+    for kind in ("MANUAL_NEXT_ACTION", "CALL", "MEETING"):
+        assert f"task_type={kind}&amp;contact={contact.pk}" in menu
+    assert f"?contact={contact.pk}&amp;next=" in menu
+
+
+def test_csat_opened_from_a_contact_preselects_them(client, staff, account, contact):
+    login(client, staff["csm"])
+    url = reverse("engagement:csat_create", args=[account.pk])
+    form = client.get(f"{url}?contact={contact.pk}").context["form"]
+
+    assert str(form.initial["contact"]) == str(contact.pk)
