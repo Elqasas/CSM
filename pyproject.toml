@@ -1,0 +1,72 @@
+[project]
+name = "csm-platform"
+version = "0.1.0"
+description = "dPhish Customer Health & Account Management Platform"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.1,<6.0",
+    "django-environ>=0.11",
+    "argon2-cffi>=23.1",
+    "django-axes>=6.4",
+    "django-q2>=1.7",
+    "django-countries>=7.6",
+    "openpyxl>=3.1",
+    "Pillow>=10.4",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2"]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "pytest-cov>=5.0",
+    "factory-boy>=3.3",
+    "time-machine>=2.15",
+    "ruff>=0.6",
+    "djlint>=1.35",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "--reuse-db -q"
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["csm"]
+omit = ["*/migrations/*", "*/tests/*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ", "C4", "SIM"]
+ignore = [
+    "E501",
+    # NULL on a string field is load-bearing in this schema rather than
+    # accidental. It carries "no value has ever been set", which is distinct
+    # from every listed choice, and on external_id, auto_key and the override
+    # columns it is what makes the partial unique indexes skip a row.
+    "DJ001",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["csm", "config"]
+
+[tool.djlint]
+profile = "django"
+# H021 (inline styles) and H023 (entity references) are switched off after
+# fixing the cases that were genuinely wrong, not instead of fixing them.
+#
+# The inline styles that remain carry *data*: a bar's length is the value it
+# encodes, and a swatch's colour is the palette token its series was assigned.
+# Neither can move to a stylesheet without inventing a class per value. The
+# ones that were pure layout - fixed table column widths - are now classes.
+#
+# Entity references are valid HTML and survive an editor with the wrong
+# encoding, where a raw middot does not. That is a preference djlint holds and
+# this project does not.
+ignore = "H021,H023"

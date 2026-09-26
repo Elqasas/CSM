@@ -1,0 +1,31 @@
+{% comment %}
+Where a task stands. Expects `task`.
+
+Two different things share this column, and only one of them is chosen by a
+person. While a task is open it shows the progress somebody set - Not started,
+In progress, Waiting for input. Once it is closed it shows how it closed.
+
+Overdue is deliberately absent. It is a fact about the clock rather than a state
+anybody set, so it belongs beside the due date, where it is already shown in
+red - putting it here would overwrite "Waiting for input" with information the
+reader can get from the date they are looking at.
+
+Auto-closed keeps its own word: an alert that closed because the account
+recovered was not done by anybody, and reading it as Done would credit somebody
+with work the account did for itself.
+{% endcomment %}
+{% if task.status == "PENDING" %}
+  {% if task.progress == "IN_PROGRESS" %}
+    <span class="badge text-bg-primary">In progress</span>
+  {% elif task.progress == "WAITING_INPUT" %}
+    <span class="badge text-bg-warning">Waiting for input</span>
+  {% else %}
+    <span class="badge text-bg-light">Not started</span>
+  {% endif %}
+{% elif task.status == "DONE" %}
+  <span class="badge text-bg-success">Completed</span>
+{% elif task.status == "AUTO_CLOSED" %}
+  <span class="badge text-bg-secondary">Auto-closed</span>
+{% else %}
+  <span class="badge text-bg-secondary">{{ task.get_status_display }}</span>
+{% endif %}

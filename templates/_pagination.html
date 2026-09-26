@@ -1,0 +1,33 @@
+{% if is_paginated %}
+  <nav class="mt-3" aria-label="Pagination">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&amp;{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+            Previous
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+      {% endif %}
+
+      <li class="page-item disabled">
+        <span class="page-link">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&amp;{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+            Next
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Next</span></li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endif %}

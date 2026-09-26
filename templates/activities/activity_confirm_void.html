@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Void activity{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-12 col-lg-6">
+      <h1 class="h4 mb-3">Void this activity?</h1>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <span class="badge text-bg-light">{{ activity.get_activity_type_display }}</span>
+            <span class="small">{{ activity.occurred_on|date:"j M Y" }}</span>
+          </div>
+          {% if activity.subject %}<div class="mt-2 fw-medium">{{ activity.subject }}</div>{% endif %}
+          {% if activity.contact %}
+            <div class="small text-body-secondary">with {{ activity.contact.full_name }}</div>
+          {% endif %}
+          {% if activity.notes %}<p class="small mt-2 mb-0">{{ activity.notes }}</p>{% endif %}
+        </div>
+      </div>
+
+      <p class="text-body-secondary">
+        The row is kept, not deleted: health scores were calculated from this log
+        and removing an entry would make an old history row unexplainable. Scoring
+        queries skip voided rows, so the score corrects itself on the next
+        recalculation.
+      </p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-danger">Void it</button>
+          <a class="btn btn-outline-secondary" href="{% url 'accounts:detail' activity.account_id %}">
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

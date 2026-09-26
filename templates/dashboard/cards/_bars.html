@@ -1,0 +1,68 @@
+{% load query %}
+{% comment %}
+Horizontal bars, one series. A single series needs no legend box - the card
+title names it - so each bar is directly labelled and the value sits at the end
+of the bar rather than on a separate axis.
+
+Category order is the registry's, never sorted by size: Class runs VIP to D and
+Lifecycle Stage runs POC to Churned, and re-ordering by count would destroy the
+sequence the reader came for.
+
+Each bar is a control, on the same terms as a donut segment: the whole row -
+label, bar and value - is one target, because a 18px-high bar is a small thing
+to hit and the label beside it means the same category. Clicking the bar that is
+already filtering the page clears it again.
+{% endcomment %}
+{% with chart=card.data.chart param=card.data.filter_param %}
+  {% if chart.is_empty or chart.max_value == 0 %}
+    <p class="text-body-secondary small mb-0">
+      {{ card.data.empty|default:"Nothing to show for this filter." }}
+    </p>
+  {% else %}
+    <svg class="viz" width="{{ chart.width }}" height="{{ chart.height }}"
+         viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img"
+         aria-labelledby="t-{{ card.id }}">
+      <title id="t-{{ card.id }}">{{ card.title }}</title>
+      {% for bar in chart.bars %}
+        {% toggle_filter param bar.key as href %}
+        {% is_filtered_on param bar.key as selected %}
+        <a {% if href %}href="{{ href }}" class="viz-hit"{% endif %}>
+          <text class="viz-label{% if selected %} is-selected{% endif %}"
+                x="{{ chart.label_width|add:-8 }}" y="{{ bar.label_y }}"
+                text-anchor="end" dominant-baseline="middle">{{ bar.label }}</text>
+          {% if bar.path %}
+            <path class="viz-bar{% if selected %} is-selected{% endif %}"
+                  d="{{ bar.path }}" fill="var({{ card.data.token }})">
+              <title>
+                {{ bar.label }}: {{ bar.value }}{% if href %} &middot; {% if selected %}click to clear this filter{% else %}click to filter the page{% endif %}{% endif %}
+              </title>
+            </path>
+          {% endif %}
+          <text class="viz-value" x="{{ bar.value_x }}" y="{{ bar.value_y }}"
+                dominant-baseline="middle">{{ bar.value }}</text>
+        </a>
+      {% endfor %}
+    </svg>
+    {% if card.data.caption %}
+      <p class="small text-body-secondary mt-2 mb-0">{{ card.data.caption }}</p>
+    {% endif %}
+  {% endif %}
+
+  {% comment %}
+  Below the chart rather than above it, so the charts in this row all start at
+  the same height. It is the card's own control, like the renewals list's
+  quarter, and it carries the page filter with it.
+  {% endcomment %}
+  {% if card.data.year_choices %}
+    <form method="get" class="d-flex gap-2 mt-3">
+      {% include "dashboard/cards/_carried_filters.html" with owns=card.data.year_param %}
+      <select class="form-select form-select-sm" name="{{ card.data.year_param }}"
+              aria-label="Year">
+        {% for y in card.data.year_choices %}
+          <option value="{{ y }}" {% if card.data.year == y %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-sm btn-outline-secondary" type="submit">Go</button>
+    </form>
+  {% endif %}
+{% endwith %}

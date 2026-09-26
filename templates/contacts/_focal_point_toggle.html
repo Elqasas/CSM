@@ -1,0 +1,21 @@
+{% comment %}
+A one-click focal-point toggle for wherever a contact is listed. Expects
+`contact` and `ability` (from the page-wide context processor).
+
+Plain filled vs outline star rather than text, so it reads at a glance across
+a grid of names - and a form, not a link, because this writes.
+{% endcomment %}
+{% if "contact.edit" in ability.capabilities %}
+  <form method="post" action="{% url 'contacts:toggle_focal_point' contact.pk %}" class="d-inline">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <button type="submit"
+            class="btn btn-sm btn-link p-0 lh-1 {% if contact.is_focal_point %}text-warning{% else %}text-body-secondary{% endif %}"
+            title="{% if contact.is_focal_point %}Focal point &mdash; click to unset{% else %}Set as focal point{% endif %}"
+            aria-label="{% if contact.is_focal_point %}Unset {{ contact.full_name }} as a focal point{% else %}Set {{ contact.full_name }} as a focal point{% endif %}">
+      <i class="bi {% if contact.is_focal_point %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+    </button>
+  </form>
+{% elif contact.is_focal_point %}
+  <i class="bi bi-star-fill text-warning" title="Focal point" aria-label="Focal point"></i>
+{% endif %}

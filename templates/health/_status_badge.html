@@ -1,0 +1,27 @@
+{% comment %}
+The health badge. Expects `presented` — an AccountPresenter, never a raw
+Account. Asking the presenter is what makes the gating real: a user without
+`health.view` reaching this template at all would raise rather than quietly
+render nothing.
+
+A pill rather than a dot beside text: the colour, the word and the score belong
+to one status, so they should look like one object.
+{% endcomment %}
+{% if presented.shows_health %}
+  <span class="health-pill
+    {% if presented.health_status == 'HEALTHY' %}is-healthy
+    {% elif presented.health_status == 'WATCH' %}is-watch
+    {% elif presented.health_status == 'AT_RISK' %}is-at-risk
+    {% else %}is-none{% endif %}">
+    <span class="health-dot
+      {% if presented.health_status == 'HEALTHY' %}is-healthy
+      {% elif presented.health_status == 'WATCH' %}is-watch
+      {% elif presented.health_status == 'AT_RISK' %}is-at-risk{% endif %}"></span>
+    {{ presented.health_status_label }}
+    {% if presented.health_score is not None %}
+      <span class="health-score opacity-75">
+        {{ presented.health_score }}/{{ presented.health_max }}
+      </span>
+    {% endif %}
+  </span>
+{% endif %}

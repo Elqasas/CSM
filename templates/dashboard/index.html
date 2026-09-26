@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0">Good to see you, {{ user.full_name|default:user.email }}</h1>
+      <p class="text-body-secondary mb-0">
+        {% comment %}
+        The date is the business date - the one every count on this page is made
+        against - and the clock is the reader's own. When the two zones differ
+        the clock says which one it is showing, because a time with no zone
+        beside it is the sort of thing people plan meetings around wrongly.
+        {% endcomment %}
+        {{ today|date:"l, j F Y" }}
+        &middot;
+        <span class="app-clock" data-timezone="{{ clock_timezone }}"
+              data-twelve-hour="{{ clock_twelve_hour|yesno:"1,0" }}"
+              title="{{ clock_timezone }}">{{ clock_now }}</span>
+        <span class="small">{{ clock_timezone }}</span>
+        {% if clock_country %}&middot; <span class="small">{{ clock_country.name }}</span>{% endif %}
+        {% if clock_timezone != business_timezone %}
+          <span class="small">
+            &middot; dates counted in {{ business_timezone }}
+          </span>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card h-100"><div class="card-body">
+        <div class="text-body-secondary small text-uppercase">Accounts</div>
+        <div class="display-6">{{ account_total }}</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card h-100"><div class="card-body">
+        <div class="text-body-secondary small text-uppercase">Overdue tasks</div>
+        <div class="display-6 {% if overdue_count %}text-danger{% endif %}">{{ overdue_count }}</div>
+        <a class="stretched-link small" href="{% url 'tasks:list' %}?scope=all&state=overdue">View</a>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card h-100"><div class="card-body">
+        <div class="text-body-secondary small text-uppercase">Unassigned</div>
+        <div class="display-6">{{ unassigned_count }}</div>
+        <a class="stretched-link small" href="{% url 'tasks:list' %}?scope=unassigned&state=open">View</a>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card h-100"><div class="card-body">
+        <div class="text-body-secondary small text-uppercase">Contacts to triage</div>
+        <div class="display-6">{{ triage_count }}</div>
+        <a class="stretched-link small" href="{% url 'contacts:triage' %}">Assess them</a>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          {% comment %}
+          "Activity" rather than "tasks": meetings and calls are task kinds, and
+          a card headed "tasks" reads as though the call you arranged is
+          somewhere else.
+          {% endcomment %}
+          <span>My open activity</span>
+          <a class="small" href="{% url 'activities:list' %}">All activities</a>
+        </div>
+        {% comment %}
+        Grouped, late first, and in the same columns as the activities page -
+        subject, type, priority, status, due - so a reader who has learned one
+        list can read the other. "What is late" and "what is today" are two
+        different questions, and a single list ordered by date answers neither
+        without checking every badge against today's date.
+        {% endcomment %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 activity-table">
+            <tbody>
+              {% for group in task_groups %}
+                {% if group.tasks %}
+                  <tr class="activity-day">
+                    <td colspan="5">
+                      <span class="small text-uppercase fw-semibold text-{{ group.tone }}">
+                        {{ group.label }}
+                      </span>
+                      <span class="small text-body-secondary">
+                        &middot; {{ group.tasks|length }}
+                      </span>
+                    </td>
+                  </tr>
+                  {% for task in group.tasks %}
+                    <tr>
+                      <td class="col-subject">
+                        <div class="cell-clip" title="{{ task.title }}">
+                          <a class="text-decoration-none fw-medium"
+                             href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a>
+                        </div>
+                        <div class="small text-body-secondary cell-clip">
+                          {{ task.account.client_name }}
+                          {% if task.contact %} &middot; {{ task.contact.full_name }}{% endif %}
+                        </div>
+                      </td>
+                      <td>
+                        <span class="badge text-bg-light">{{ task.get_task_type_display }}</span>
+                        {% if task.series_id %}
+                          <span class="badge text-bg-light" title="{{ task.series.summary }}">
+                            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                          </span>
+                        {% endif %}
+                      </td>
+                      <td>{% include "tasks/_priority.html" %}</td>
+                      <td>{% include "tasks/_status.html" %}</td>
+                      <td class="text-end small {% if task.is_overdue_now %}text-danger fw-semibold{% endif %}">
+                        {{ task.due_display }}
+                        <div class="mt-1">
+                          {% include "tasks/_row_buttons.html" with task=task next=request.path %}
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+              {% if not my_open_total %}
+                <tr>
+                  <td colspan="5" class="text-body-secondary">Nothing open. Enjoy it.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% if overdue_elsewhere %}
+            {% comment %}
+            Not in the list, because the list is what is assigned to this
+            reader. Said out loud all the same: an overdue task on an account
+            they own, sitting with whoever held that account when it was
+            raised, is exactly the one that goes unnoticed.
+            {% endcomment %}
+            <li class="list-group-item small">
+              <a class="text-decoration-none"
+                 href="{% url 'tasks:list' %}?scope=all&amp;state=overdue">
+                {{ overdue_elsewhere }} more overdue task{{ overdue_elsewhere|pluralize }}
+                across your accounts, assigned to somebody else
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    {% if shows_health %}
+      <div class="col-12 col-xl-6">
+        {% comment %}
+        Two cards in the column the tasks card sits beside, stacked: the counts
+        are a summary you read at a glance, the list is something you work
+        through. Separating them lets each be the size it needs.
+        {% endcomment %}
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Portfolio health</span>
+            <a class="small" href="{% url 'dashboard:analytics' %}">Analytics</a>
+          </div>
+          <div class="card-body">
+            <div class="row g-2 text-center">
+              <div class="col-3">
+                <a class="stat-link" href="{% url 'accounts:list' %}?status=HEALTHY">
+                  <span class="stat-value text-success">{{ health_counts.healthy }}</span>
+                  <span class="small text-body-secondary d-block">Healthy</span>
+                </a>
+              </div>
+              <div class="col-3">
+                <a class="stat-link" href="{% url 'accounts:list' %}?status=WATCH">
+                  <span class="stat-value text-warning">{{ health_counts.watch }}</span>
+                  <span class="small text-body-secondary d-block">Watch</span>
+                </a>
+              </div>
+              <div class="col-3">
+                <a class="stat-link" href="{% url 'accounts:list' %}?status=AT_RISK">
+                  <span class="stat-value text-danger">{{ health_counts.at_risk }}</span>
+                  <span class="small text-body-secondary d-block">At Risk</span>
+                </a>
+              </div>
+              <div class="col-3">
+                <a class="stat-link" href="{% url 'accounts:list' %}?status=NOT_APPLICABLE">
+                  <span class="stat-value text-body-secondary">{{ health_counts.not_applicable }}</span>
+                  <span class="small text-body-secondary d-block">N/A</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Needs attention</div>
+          <ul class="list-group list-group-flush">
+            {% for account in at_risk_accounts %}
+              <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                <span>
+                  {% include "health/_dot.html" with status=account.effective_health_status %}
+                  <a href="{% url 'accounts:detail' account.pk %}" class="text-decoration-none ms-1">
+                    {{ account.client_name }}
+                  </a>
+                </span>
+                <span class="small text-body-secondary">
+                  {% if account.red_since %}red since {{ account.red_since|date:"j M" }}{% endif %}
+                </span>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-body-secondary">Nothing at risk.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Going quiet</span>
+          <a class="small" href="{% url 'contacts:attention' %}">Full list</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Contact</th><th>Account</th><th>Position</th><th class="text-end">Last contact</th>
+                <th class="text-end"><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for contact in going_quiet %}
+                {% comment %}
+                Same row-link plus three-dot menu as the contacts page itself,
+                per item 2: edit, add CSAT, delete, without leaving "My day".
+                {% endcomment %}
+                <tr class="row-link" data-href="{% url 'contacts:detail' contact.pk %}">
+                  <td>
+                    <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none">
+                      {{ contact.full_name }}
+                    </a>
+                    <div class="small text-body-secondary">{{ contact.title }}</div>
+                  </td>
+                  <td>
+                    <a href="{% url 'accounts:detail' contact.account_id %}"
+                       class="text-decoration-none">{{ contact.account.client_name }}</a>
+                  </td>
+                  <td><span class="small">{{ contact.quadrant_label }}</span></td>
+                  <td class="text-end">
+                    {% include "contacts/_staleness.html" with last=contact.last_contacted_on today=today %}
+                  </td>
+                  <td class="text-end" style="width: 1%;">
+                    {% include "contacts/_row_actions.html" with contact=contact next=request.get_full_path %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="text-body-secondary">No assessed contacts yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

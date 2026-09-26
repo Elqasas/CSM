@@ -1,0 +1,89 @@
+{% load query %}
+{% comment %}
+A donut plus a legend that carries label, count and share.
+
+The legend is not optional decoration. For the health card the segment colours
+are traffic lights, and red against green is the pair a deuteranopic reader
+cannot separate, so the text beside each swatch is what actually conveys the
+value. Text stays in ink; the swatch carries identity.
+
+Every segment is also a control. When the card names a filter parameter and the
+segment carries a key, both the arc and its legend row link back to this page
+with that filter applied - and, if it is already applied, with it removed, so the
+segment the reader just clicked is also the way back. A segment with no key (the
+country chart's folded "Other", a status nobody has calculated) renders as an
+anchor with no href: inert, and the same markup either way rather than two
+copies of it.
+{% endcomment %}
+{% with chart=card.data.chart param=card.data.filter_param %}
+  {% if chart.is_empty %}
+    <p class="text-body-secondary small mb-0">Nothing to show for this filter.</p>
+  {% else %}
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <svg class="viz" width="{{ chart.size }}" height="{{ chart.size }}"
+           viewBox="0 0 {{ chart.size }} {{ chart.size }}" role="img"
+           aria-labelledby="t-{{ card.id }}">
+        <title id="t-{{ card.id }}">{{ card.title }}</title>
+        {% for segment in chart.segments %}
+          {% toggle_filter param segment.key as href %}
+          {% is_filtered_on param segment.key as selected %}
+          <a {% if href %}href="{{ href }}" class="viz-hit"{% endif %}>
+            <path class="viz-segment{% if selected %} is-selected{% endif %}"
+                  d="{{ segment.path }}" fill="var({{ segment.token }})">
+              <title>
+                {{ segment.label }}: {{ segment.value }} ({{ segment.percent_display }}){% if href %} &middot; {% if selected %}click to clear this filter{% else %}click to filter the page{% endif %}{% endif %}
+              </title>
+            </path>
+          </a>
+        {% endfor %}
+        <text class="viz-donut-total" x="{{ chart.centre }}" y="{{ chart.centre }}">
+          {{ chart.total_display }}
+        </text>
+        <text class="viz-donut-caption" x="{{ chart.centre }}" y="{{ chart.centre|add:16 }}">
+          {{ chart.unit }}
+        </text>
+      </svg>
+
+      <ul class="viz-legend flex-column">
+        {% for segment in chart.segments %}
+          {% toggle_filter param segment.key as href %}
+          {% is_filtered_on param segment.key as selected %}
+          <li>
+            <a class="viz-legend-link{% if selected %} is-selected{% endif %}"
+               {% if href %}href="{{ href }}"{% endif %}>
+              <span class="viz-swatch" style="background: var({{ segment.token }})"></span>
+              <span>{{ segment.label }}</span>
+              <span class="viz-legend-value">
+                {{ segment.value }} &middot; {{ segment.percent_display }}
+              </span>
+              {% if selected %}
+                <i class="bi bi-x-circle-fill viz-clear" aria-hidden="true"></i>
+                <span class="visually-hidden">(filtering the page; click to clear)</span>
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    {% if card.data.caption %}
+      <p class="small text-body-secondary mt-2 mb-0">{{ card.data.caption }}</p>
+    {% endif %}
+
+    <details class="mt-2">
+      <summary class="small text-body-secondary">Table view</summary>
+      <table class="table table-sm mt-2 mb-0">
+        <thead><tr><th>{{ card.title }}</th><th class="text-end">{{ chart.unit|capfirst }}</th><th class="text-end">Share</th></tr></thead>
+        <tbody>
+          {% for segment in chart.segments %}
+            <tr>
+              <td>{{ segment.label }}</td>
+              <td class="text-end">{{ segment.value }}</td>
+              <td class="text-end">{{ segment.percent_display }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
+{% endwith %}

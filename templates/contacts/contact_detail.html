@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contact.full_name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contacts:attention' %}">Contacts</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">{{ contact.full_name }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div class="d-flex align-items-start gap-3">
+      {% include "accounts/_logo.html" with account=account %}
+      <div>
+        <h1 class="h4 mb-1">{{ contact.full_name }}</h1>
+        <div class="text-body-secondary small">
+          {% if contact.title %}{{ contact.title }} &middot; {% endif %}
+          <a class="text-decoration-none" href="{% url 'accounts:detail' account.pk %}">
+            {{ account.client_name }}
+          </a>
+          {% if not contact.is_active %}
+            &middot; <span class="badge text-bg-secondary">Inactive</span>
+          {% endif %}
+          {% if contact.is_focal_point %}
+            &middot; <span class="badge text-bg-info">
+              Focal point L{{ contact.focal_rank }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Where they sit</span>
+          <div class="d-flex gap-2 align-items-center">
+            {% if contact.is_active and "task.create" in ability.capabilities %}
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-primary" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        aria-label="Add a task for {{ contact.full_name }}">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% for value, label, icon in add_kinds %}
+                    <li>
+                      <a class="dropdown-item"
+                         href="{% url 'tasks:create' account.pk %}?task_type={{ value }}&amp;contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            {% if "contact.edit" in ability.capabilities %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'contacts:edit' contact.pk %}?next={{ request.path|urlencode }}">
+                <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+              </a>
+              {% comment %}
+              No `next` here on purpose: this page is the contact that is
+              about to stop existing, so the view's own fallback - back to
+              their account - is what should happen after.
+              {% endcomment %}
+              <a class="btn btn-sm btn-outline-danger"
+                 href="{% url 'contacts:delete' contact.pk %}"
+                 hx-get="{% url 'contacts:delete' contact.pk %}"
+                 hx-target="#confirm-modal .modal-content"
+                 data-bs-toggle="modal" data-bs-target="#confirm-modal">
+                <i class="bi bi-trash3" aria-hidden="true"></i> Delete
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          {% if contact.is_assessed %}
+            <span class="badge text-bg-primary">{{ contact.quadrant_label }}</span>
+            <span class="small text-body-secondary ms-2">
+              {{ contact.get_influence_display }} influence &middot;
+              {{ contact.get_interest_display }} interest
+            </span>
+          {% else %}
+            {% comment %}
+            Unassessed is a state of its own, not a Medium nobody typed. Saying
+            so here is what stops the grid quietly advising intensive management
+            of everyone who arrived through an import.
+            {% endcomment %}
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <span class="badge text-bg-warning">Not assessed</span>
+              <span class="small text-body-secondary">
+                Nobody has placed them on the power/interest grid yet.
+              </span>
+              {% if "contact.edit" in ability.capabilities %}
+                <a class="small" href="{% url 'contacts:triage' %}">Assess in the triage tray</a>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% comment %}
+          Two columns rather than one long stack: five fields at full width
+          made this the tallest card on the page for no reason - none of them
+          need the room.
+          {% endcomment %}
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <dl class="row small mb-0">
+                <dt class="col-5">Last contacted</dt>
+                <dd class="col-7">
+                  {% include "contacts/_staleness.html" with last=contact.last_contacted_on today=today %}
+                </dd>
+                <dt class="col-5">Email</dt>
+                <dd class="col-7">
+                  {% if contact.email %}
+                    <a class="text-decoration-none" href="mailto:{{ contact.email }}">
+                      {{ contact.email }}
+                    </a>
+                  {% else %}<span class="text-body-secondary">&mdash;</span>{% endif %}
+                </dd>
+                <dt class="col-5">Phone</dt>
+                <dd class="col-7">{{ contact.phone|default:"&mdash;" }}</dd>
+              </dl>
+            </div>
+            <div class="col-md-6">
+              <dl class="row small mb-0">
+                <dt class="col-5">Preferred channel</dt>
+                <dd class="col-7">
+                  {{ contact.get_preferred_channel_display|default:"&mdash;" }}
+                </dd>
+                <dt class="col-5">Reachable on</dt>
+                <dd class="col-7">
+                  {% if channels %}{{ channels|join:", " }}
+                  {% else %}<span class="text-body-secondary">&mdash;</span>{% endif %}
+                </dd>
+              </dl>
+            </div>
+          </div>
+
+          {% if contact.notes %}
+            <hr>
+            <div class="small">{{ contact.notes|linebreaksbr }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Recent activity with them</span>
+          <a class="small" href="{% url 'activities:timeline' account.pk %}">
+            The whole account
+          </a>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for activity in activities %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between gap-2">
+                <div>
+                  <span class="badge text-bg-light">{{ activity.get_activity_type_display }}</span>
+                  {% if activity.subject %}<strong>{{ activity.subject }}</strong>{% endif %}
+                  {% if activity.notes %}
+                    <div class="small text-body-secondary">
+                      {{ activity.notes|truncatewords:30 }}
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="small text-end flex-shrink-0">
+                  {{ activity.occurred_on|date:"j M Y" }}
+                </div>
+              </div>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              Nothing logged with this contact yet.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% comment %}
+Card 12. A count plus a per-owner breakdown by type. For a viewer who may not
+see health this is already narrowed to renewal tasks before it reaches here -
+an overdue health alert is a health signal like any other.
+{% endcomment %}
+<div class="stat-value">{{ card.data.value }}</div>
+<div class="small text-body-secondary mb-2">{{ card.data.caption }}</div>
+
+<div class="table-responsive">
+  <table class="table table-sm mb-0">
+    <thead><tr><th>Owner</th><th>By type</th><th class="text-end">Total</th></tr></thead>
+    <tbody>
+      {% for row in card.data.rows %}
+        <tr>
+          <td>{{ row.owner }}</td>
+          <td class="small text-body-secondary">
+            {% for label, count in row.types.items %}
+              {{ label }} {{ count }}{% if not forloop.last %} &middot; {% endif %}
+            {% endfor %}
+          </td>
+          <td class="text-end viz-legend-value">{{ row.total }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="text-body-secondary">Nothing overdue.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,59 @@
+{% comment %}
+The actions on one task, wherever a task is listed: Done as a button, because it
+is the thing people press all day, and the rest behind a three-dot menu so a
+list of ten tasks is not a wall of buttons.
+
+Expects `task` and `next` (where to come back to). Each action is a POST with
+its own CSRF token - a GET that completes or deletes a task would be followed by
+any link prefetcher that passed.
+
+Capability-gated one by one rather than as a block: they are separate
+permissions, and a reader who may complete a task but not delete one should see
+exactly that.
+{% endcomment %}
+<div class="d-flex align-items-center gap-1 flex-shrink-0">
+  {% if task.status == "PENDING" and "task.complete" in ability.capabilities %}
+    <form method="post" action="{% url 'tasks:complete' task.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-sm btn-outline-success" type="submit">Done</button>
+    </form>
+  {% endif %}
+
+  {% if "task.edit" in ability.capabilities or "task.delete" in ability.capabilities %}
+    <div class="dropdown">
+      <button class="btn btn-sm btn-link text-body-secondary px-1" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-label="More actions for {{ task.title }}">
+        <i class="bi bi-three-dots-vertical"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        {% if "task.edit" in ability.capabilities %}
+          <li>
+            <a class="dropdown-item" href="{% url 'tasks:edit' task.pk %}?next={{ next|urlencode }}">
+              <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+          </li>
+        {% endif %}
+        {% if task.status == "PENDING" and "task.delete" in ability.capabilities %}
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'tasks:delete' task.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ next }}">
+              <button class="dropdown-item text-danger" type="submit">
+                {% comment %}
+                A generated task is cancelled rather than deleted - a hard
+                delete frees its idempotency key and it reappears the next
+                morning - so the menu says which one this is.
+                {% endcomment %}
+                <i class="bi bi-trash me-2"></i>
+                {% if task.is_system_generated %}Cancel{% else %}Delete{% endif %}
+              </button>
+            </form>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,83 @@
+{% comment %}
+Two series on one shared y-scale. Never two scales: two axes let the author
+decide which line looks higher, and the reader cannot tell it happened.
+
+Both series are counts of the same kind of thing, so one scale is also the
+honest choice rather than merely the safe one.
+{% endcomment %}
+{% with chart=card.data.chart %}
+  {% if chart.is_empty %}
+    <p class="text-body-secondary small mb-0">
+      No events or digital content recorded in the last twelve months.
+    </p>
+  {% else %}
+    <ul class="viz-legend mb-2">
+      {% for series in chart.series %}
+        <li>
+          <span class="viz-swatch" style="background: var({{ series.token }})"></span>
+          <span>{{ series.name }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <svg class="viz" width="{{ chart.width }}" height="{{ chart.height }}"
+         viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img"
+         aria-labelledby="t-{{ card.id }}">
+      <title id="t-{{ card.id }}">{{ card.title }} over the last twelve months</title>
+
+      {% for line in chart.grid %}
+        <line class="viz-grid-line" x1="{{ chart.plot_left }}" y1="{{ line.y }}"
+              x2="{{ chart.width|add:-8 }}" y2="{{ line.y }}"></line>
+        <text class="viz-label" x="{{ chart.plot_left|add:-6 }}" y="{{ line.y }}"
+              text-anchor="end" dominant-baseline="middle">{{ line.value }}</text>
+      {% endfor %}
+
+      <line class="viz-axis-line" x1="{{ chart.plot_left }}" y1="{{ chart.plot_top }}"
+            x2="{{ chart.plot_left }}" y2="{{ chart.plot_bottom }}"></line>
+
+      {% for series in chart.series %}
+        <path class="viz-line" d="{{ series.path }}" stroke="var({{ series.token }})"></path>
+      {% endfor %}
+
+      {% for series in chart.series %}
+        {% for point in series.points %}
+          <circle class="viz-marker" cx="{{ point.x }}" cy="{{ point.y }}" r="4"
+                  fill="var({{ series.token }})">
+            <title>{{ series.name }} &middot; {{ point.label }}: {{ point.value }}</title>
+          </circle>
+        {% endfor %}
+      {% endfor %}
+
+      {% for series in chart.series %}{% if forloop.first %}
+        {% for point in series.points %}
+          <text class="viz-label" x="{{ point.x }}" y="{{ chart.height|add:-8 }}"
+                text-anchor="middle">{{ point.label }}</text>
+        {% endfor %}
+      {% endif %}{% endfor %}
+    </svg>
+
+    <details class="mt-2">
+      <summary class="small text-body-secondary">Table view</summary>
+      <div class="table-responsive">
+        <table class="table table-sm mt-2 mb-0">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th class="text-end">Events</th>
+              <th class="text-end">Digital content</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for label, events, content in card.data.table %}
+              <tr>
+                <td>{{ label }}</td>
+                <td class="text-end">{{ events }}</td>
+                <td class="text-end">{{ content }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+{% endwith %}

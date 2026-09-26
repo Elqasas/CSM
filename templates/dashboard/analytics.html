@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load query %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h1 class="h4 mb-0">Analytics</h1>
+      <p class="text-body-secondary small mb-0">
+        Across the {{ cards.0.data.value }} account{{ cards.0.data.value|pluralize }}
+        you can see &middot; {{ today|date:"j M Y" }}
+      </p>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:index' %}">
+      My day
+    </a>
+  </div>
+
+  {% comment %}
+  One filter governs every card, per specification section 8. Health status is
+  offered only to users who may see health: without that guard the filter would
+  be an oracle, letting a reader who cannot see the health card infer the
+  distribution from how the other cards' counts move.
+  {% endcomment %}
+  <form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-4 col-xl-2">
+        <label class="form-label small" for="f-country">Country</label>
+        <select class="form-select form-select-sm" id="f-country" name="country">
+          <option value="">All countries</option>
+          {% for code, name in countries %}
+            <option value="{{ code }}" {% if filters.country == code %}selected{% endif %}>
+              {{ name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-4 col-xl-2">
+        <label class="form-label small" for="f-class">Class</label>
+        <select class="form-select form-select-sm" id="f-class" name="class">
+          <option value="">All classes</option>
+          {% for value, label in account_classes %}
+            <option value="{{ value }}" {% if filters.class == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if shows_health %}
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="form-label small" for="f-status">Health status</label>
+          <select class="form-select form-select-sm" id="f-status" name="status">
+            <option value="">Any status</option>
+            {% for value, label in health_statuses %}
+              <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="col-6 col-md-4 col-xl-2">
+        <label class="form-label small" for="f-csm">CSM</label>
+        <select class="form-select form-select-sm" id="f-csm" name="csm">
+          <option value="">Any CSM</option>
+          {% for value, label in csm_choices %}
+            <option value="{{ value }}" {% if filters.csm == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-4 col-xl-2">
+        <label class="form-label small" for="f-acm">ACM</label>
+        <select class="form-select form-select-sm" id="f-acm" name="acm">
+          <option value="">Any ACM</option>
+          {% for value, label in acm_choices %}
+            <option value="{{ value }}" {% if filters.acm == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-4 col-xl-2">
+        <label class="form-label small" for="f-renewal">Renewal quarter</label>
+        <select class="form-select form-select-sm" id="f-renewal" name="renewal">
+          <option value="">Any quarter</option>
+          {% for value, label in renewal_quarters %}
+            <option value="{{ value }}" {% if filters.renewal == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
+      <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+      {% comment %}
+      One chip per active filter, each removing only itself. Clicking a chart
+      segment is a toggle while the segment is still on screen; narrow the page
+      to nothing and it no longer is, and Clear filters would throw away the
+      other choices too.
+      {% endcomment %}
+      {% for chip in active_filters %}
+        {% toggle_filter chip.param chip.value as href %}
+        <a class="filter-chip" href="{{ href }}">
+          {{ chip.label }}
+          <i class="bi bi-x" aria-hidden="true"></i>
+          <span class="visually-hidden">remove this filter</span>
+        </a>
+      {% endfor %}
+      {% if has_filters %}
+        <a class="small ms-1" href="{% url 'dashboard:analytics' %}">Clear all</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="row g-3">
+    {% for card in cards %}
+      <div class="{{ card.width }}">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h6 text-body-secondary text-uppercase small mb-3">{{ card.title }}</h2>
+
+            {% if card.kind == "stat" %}
+              {% include "dashboard/cards/_stat.html" %}
+            {% elif card.kind == "donut" %}
+              {% include "dashboard/cards/_donut.html" %}
+            {% elif card.kind == "bars" %}
+              {% include "dashboard/cards/_bars.html" %}
+            {% elif card.kind == "line" %}
+              {% include "dashboard/cards/_line.html" %}
+            {% elif card.kind == "renewals" %}
+              {% include "dashboard/cards/_renewals.html" %}
+            {% elif card.kind == "tasks" %}
+              {% include "dashboard/cards/_tasks.html" %}
+            {% elif card.kind == "roster" %}
+              {% include "dashboard/cards/_roster.html" %}
+            {% endif %}
+
+            {% if card.note %}
+              <p class="small text-body-secondary mt-3 mb-0">{{ card.note }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

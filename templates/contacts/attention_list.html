@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Contacts{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Who has gone quiet</h1>
+      <p class="text-body-secondary small mb-0">
+        Across your accounts. High-influence contacts first, then by how long
+        since anyone spoke to them.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if triage_total %}
+        <a class="btn btn-sm btn-warning" href="{% url 'contacts:triage' %}">
+          {{ triage_total }} to triage
+        </a>
+      {% endif %}
+      {% if "contact.edit" in ability.capabilities %}
+        <a class="btn btn-sm btn-primary" href="{% url 'contacts:create_anywhere' %}">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Add contact
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="get" class="card card-body py-2 mb-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="field-icon">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="form-control form-control-sm" type="search" name="q"
+                 value="{{ q }}" aria-label="Search contacts"
+                 placeholder="Name, title, email or account">
+        </div>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary" type="submit">Search</button>
+      </div>
+      {% if q %}
+        <div class="col-auto">
+          <a class="small" href="{{ request.path }}">Clear</a>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Contact</th>
+            <th>Account</th>
+            <th>Influence</th>
+            <th>Interest</th>
+            <th>Position</th>
+            <th class="text-end">Last contact</th>
+            <th class="text-end"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contact in contacts %}
+            {% comment %}
+            The whole row opens the contact, same as the account list: the
+            name stays a real link for a keyboard or a screen reader, and this
+            only adds the rest of the row as a mouse target. Clicks on the
+            menu are left alone.
+            {% endcomment %}
+            <tr class="row-link" data-href="{% url 'contacts:detail' contact.pk %}">
+              <td>
+                <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
+                  {{ contact.full_name }}
+                </a>
+                {% if contact.title %}
+                  <div class="small text-body-secondary">{{ contact.title }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'accounts:detail' contact.account_id %}" class="text-decoration-none">
+                  {{ contact.account.client_name }}
+                </a>
+              </td>
+              <td><span class="small">{{ contact.get_influence_display }}</span></td>
+              <td><span class="small">{{ contact.get_interest_display }}</span></td>
+              <td><span class="small">{{ contact.quadrant_label }}</span></td>
+              <td class="text-end">
+                {% include "contacts/_staleness.html" with last=contact.last_contacted_on today=today %}
+              </td>
+              <td class="text-end" style="width: 1%;">
+                {% include "contacts/_row_actions.html" with contact=contact next=request.get_full_path %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <i class="bi bi-people"></i>
+                  {% if q %}
+                    <div class="empty-state-title">Nobody matches &ldquo;{{ q }}&rdquo;</div>
+                    <div class="small">
+                      Searches name, title, email and account.
+                      <a href="{{ request.path }}">Clear the search</a>.
+                    </div>
+                  {% else %}
+                    <div class="empty-state-title">No assessed contacts yet</div>
+                    <div class="small">
+                      {% if triage_total %}
+                        <a href="{% url 'contacts:triage' %}">Start with the {{ triage_total }} awaiting triage.</a>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

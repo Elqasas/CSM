@@ -1,0 +1,19 @@
+{% comment %}
+One line in a calendar cell. Expects `label`, `kind`, `priority`, `state` and
+optionally `url` and `time`.
+
+`state` is what it is: "planned" for a task that exists, "projected" for a day a
+repeat will fall on but nothing has been written for yet, "happened" for the
+log. Projected entries are outlined rather than filled - they are a forecast,
+and a forecast that looks identical to a commitment is a lie about the week.
+
+Priority is a left border rather than a background: colour is never the only
+channel here either, and the kind is spelled out beside it.
+{% endcomment %}
+<div class="cal-entry is-{{ state }} prio-{{ priority|lower }}">
+  {% if url %}<a class="cal-entry-link" href="{{ url }}">{% endif %}
+  {% if time %}<span class="cal-time">{{ time|time:"H:i" }}</span>{% endif %}
+  <span class="cal-title">{{ label }}</span>
+  <span class="cal-kind">{{ kind }}</span>
+  {% if url %}</a>{% endif %}
+</div>

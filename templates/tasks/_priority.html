@@ -1,0 +1,14 @@
+{% comment %}
+How much a task matters, as distinct from when it is due. Expects `task`.
+
+High is the only one that gets a colour. If every level is coloured the column
+reads as decoration and the eye stops picking out the one row that needs
+attention today - which is the entire job of a priority column.
+{% endcomment %}
+{% if task.priority == "HIGH" %}
+  <span class="badge text-bg-danger">High</span>
+{% elif task.priority == "LOW" %}
+  <span class="badge text-bg-light text-body-secondary">Low</span>
+{% else %}
+  <span class="badge text-bg-light">Medium</span>
+{% endif %}

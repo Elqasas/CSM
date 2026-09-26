@@ -1,0 +1,92 @@
+{% load query %}
+{% comment %}
+The filter bar, shared by the portfolio page and one client's own.
+
+A form rather than a row of links: six filters as links means six URLs to build
+by hand in the markup, and the first one somebody forgets to carry drops a
+filter silently. Submitting the whole form carries all of them every time.
+
+`account_choices` is present only on the portfolio page - on a client's own the
+client is the page.
+{% endcomment %}
+{% comment %}
+Show and Period are links rather than form fields: they are the two people flick
+between, and a link answers on one click where a select needs a second one on
+Apply. They carry the rest of the query string with them, so flicking Show does
+not drop the search somebody typed.
+{% endcomment %}
+<div class="card card-body py-3 mb-3">
+  <div class="d-flex flex-wrap gap-4">
+    <div>
+      {% include "activities/_seg_filter.html" with name="nature" label="Show" options=natures current=filters.nature %}
+    </div>
+    <div>
+      {% include "activities/_seg_filter.html" with name="period" label="Period" options=periods current=filters.period %}
+    </div>
+  </div>
+</div>
+
+<form method="get" class="card card-body py-3 mb-3">
+  {% comment %}
+  Carried as hidden inputs so submitting the search does not undo the two above.
+  {% endcomment %}
+  <input type="hidden" name="nature" value="{{ filters.nature }}">
+  <input type="hidden" name="period" value="{{ filters.period }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-lg-4">
+      <label class="form-label small" for="f-q">Search</label>
+      <div class="field-icon">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input class="form-control form-control-sm" id="f-q" type="search" name="q"
+               value="{{ filters.q }}" placeholder="Title, subject or notes">
+      </div>
+    </div>
+
+    {% if account_choices %}
+      <div class="col-6 col-lg-3">
+        <label class="form-label small" for="f-account">Account</label>
+        <select class="form-select form-select-sm" id="f-account" name="account">
+          <option value="">Every account</option>
+          {% for pk, name in account_choices %}
+            <option value="{{ pk }}" {% if filters.account == pk|stringformat:"s" %}selected{% endif %}>
+              {{ name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    <div class="col-6 col-lg-2">
+      <label class="form-label small" for="f-kind">Kind</label>
+      <select class="form-select form-select-sm" id="f-kind" name="kind">
+        <option value="">Any kind</option>
+        {% for value, label in kinds %}
+          <option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-6 col-lg-1 d-grid">
+      <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+    <div class="form-check form-check-inline mb-0">
+      <input class="form-check-input" type="checkbox" id="f-voided" name="include_voided"
+             value="1" {% if filters.include_voided %}checked{% endif %}>
+      <label class="form-check-label small" for="f-voided">Include voided</label>
+    </div>
+    {% if has_filters %}
+      <a class="small" href="{{ request.path }}">Clear filters</a>
+    {% endif %}
+    <span class="small text-body-secondary ms-auto">
+      {{ entries|length }} entr{{ entries|length|pluralize:"y,ies" }}
+      {% if truncated %}
+        &middot; the most recent {{ limit }} of each; narrow the period to see further back
+      {% endif %}
+    </span>
+  </div>
+</form>

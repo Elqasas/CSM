@@ -1,0 +1,15 @@
+{% comment %}
+Everything on one day, in the order a day is read: what happened, what is due,
+and what a repeat will put there. Expects `bucket` (may be missing) and `limit`.
+{% endcomment %}
+{% if bucket %}
+  {% for activity in bucket.activities|slice:limit %}
+    {% include "schedule/_entry.html" with label=activity.subject|default:activity.get_activity_type_display kind=activity.account.client_name priority="none" state="happened" %}
+  {% endfor %}
+  {% for task in bucket.tasks|slice:limit %}
+    {% include "schedule/_entry.html" with label=task.title kind=task.account.client_name priority=task.priority state="planned" time=task.due_time url=task.get_edit_url %}
+  {% endfor %}
+  {% for entry in bucket.projected|slice:limit %}
+    {% include "schedule/_entry.html" with label=entry.title kind=entry.series.account.client_name priority=entry.priority state="projected" time=entry.series.due_time %}
+  {% endfor %}
+{% endif %}

@@ -1,0 +1,22 @@
+{% comment %}
+How long since anyone spoke to this contact. Expects `last` (a date or None) and
+`today`.
+
+Never-contacted reads as its own state rather than as a very large number,
+because "nobody has ever called this person" is a different problem from "it has
+been a while".
+
+Today and yesterday are named rather than measured. `timesince` on a date
+renders midnight to midnight, so a call logged this morning came out as
+"0 minutes ago" - which reads as a broken counter rather than as contact that
+happened today.
+{% endcomment %}
+{% if last %}
+  {% if last >= today %}
+    <span class="staleness">today</span>
+  {% else %}
+    <span class="staleness">{{ last|timesince:today }} ago</span>
+  {% endif %}
+{% else %}
+  <span class="staleness is-never">never</span>
+{% endif %}

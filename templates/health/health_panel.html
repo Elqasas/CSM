@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.client_name }} &middot; Health{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Health</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <h1 class="h4 mb-0">Health</h1>
+    {% if can_override %}
+      {% if override %}
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'health:override_clear' account.pk %}">
+          Clear override
+        </a>
+      {% else %}
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'health:override' account.pk %}">
+          Override status
+        </a>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% if override %}
+    <div class="mb-3">
+      {% include "health/_override_banner.html" %}
+    </div>
+  {% endif %}
+
+  {% if capped_by_red_factors %}
+    <div class="alert alert-danger">
+      <strong>At Risk because half the factors are red, not because of the score.</strong>
+      <div class="small mt-1">
+        The arithmetic puts this account at {{ latest.score }}, which the band
+        rule would read as Watch. Half or more of what is measured is red, so the
+        status says At Risk instead. A Watch that rests on landing exactly on a
+        boundary is not a Watch.
+      </div>
+    </div>
+  {% endif %}
+
+  {% if latest and not factors %}
+    {% comment %} A history row exists but carries no factors: the account is in a stage
+       that is not scored at all. Rendering the empty breakdown table instead
+       would show a Final of None/None, which reads as a bug rather than as the
+       deliberate N/A it is. {% endcomment %}
+    <div class="alert alert-secondary">
+      <strong>Not scored.</strong>
+      This account is in
+      <em>{{ presented.lifecycle_stage_label }}</em>, one of the stages the
+      engine does not calculate. POC, Closed-Won, Closed-Lost, Onboarding and
+      Churned accounts have no health score by design; scoring resumes when the
+      account enters a scored stage, from a fresh baseline so the gap does not
+      read as neglect.
+      <div class="small text-body-secondary mt-1">
+        Last evaluated {{ latest.calculated_at|date:"j M Y H:i" }}.
+      </div>
+    </div>
+  {% elif latest %}
+    <div class="row g-4">
+      <div class="col-12 col-xl-7">
+        <div class="card mb-4">
+          <div class="card-header">Factor breakdown</div>
+          <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+              <thead>
+                <tr><th>Factor</th><th>Outcome</th><th class="col-points">Points</th><th>Contribution</th></tr>
+              </thead>
+              <tbody>
+                {% for factor in factors %}
+                  <tr>
+                    <td>
+                      <div>{{ factor.name }}</div>
+                      {% if factor.detail %}
+                        <div class="small text-body-secondary">{{ factor.detail }}</div>
+                      {% endif %}
+                    </td>
+                    <td class="small">{{ factor.reason|default:factor.outcome }}</td>
+                    <td>
+                      <div class="factor-bar factor-{{ factor.color }}">
+                        <span style="width: {{ factor.points|default:0 }}%"></span>
+                      </div>
+                      <span class="small text-body-secondary">{{ factor.points }}</span>
+                    </td>
+                    <td class="small health-score">{{ factor.contribution }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-body-secondary">No factors recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr class="fw-semibold">
+                  <td colspan="3">Final</td>
+                  <td class="health-score">{{ latest.score }}/{{ latest.max_score }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-5">
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="text-body-secondary small text-uppercase">Current</div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              {% include "health/_status_badge.html" with presented=presented %}
+            </div>
+            <dl class="row small mt-3 mb-0">
+              <dt class="col-6">Factor set</dt>
+              <dd class="col-6">{{ latest.get_factor_set_display|default:latest.factor_set }}</dd>
+              <dt class="col-6">Engine version</dt>
+              <dd class="col-6">{{ latest.engine_version }}</dd>
+              <dt class="col-6">Last calculated</dt>
+              <dd class="col-6">{{ latest.calculated_at|date:"j M Y H:i" }}</dd>
+              <dt class="col-6">Trigger</dt>
+              <dd class="col-6">{{ latest.get_trigger_display }}</dd>
+            </dl>
+          </div>
+        </div>
+
+        {% comment %}
+        What somebody came here to do. The factors on the left explain the
+        number; these three are what moves it, so they sit where the hand goes
+        rather than a page away.
+        {% endcomment %}
+        {% include "engagement/_score_inputs.html" %}
+
+        <div class="card">
+          <div class="card-header">History</div>
+          <ul class="list-group list-group-flush small">
+            {% for row in history %}
+              <li class="list-group-item d-flex justify-content-between">
+                <span>{{ row.calculated_on|date:"j M Y" }}</span>
+                <span class="text-body-secondary">{{ row.get_trigger_display }}</span>
+                <span class="health-score">
+                  {{ row.score|default:"&mdash;" }}/{{ row.max_score|default:"&mdash;" }}
+                </span>
+                <span>{{ row.get_effective_status_display }}</span>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-body-secondary">No history yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-secondary">
+      No score has been calculated for this account yet. Accounts in POC,
+      Closed-Won, Closed-Lost, Onboarding or Churned are not scored at all.
+    </div>
+
+    {% comment %}
+    Shown here too: an account with no score yet still has tickets and ratings,
+    and they are the first thing somebody records when a stage change is about
+    to start the scoring.
+    {% endcomment %}
+    {% include "engagement/_score_inputs.html" %}
+  {% endif %}
+{% endblock %}

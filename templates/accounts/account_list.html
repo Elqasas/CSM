@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Accounts</h1>
+      <p class="text-body-secondary small mb-0">
+        {{ paginator.count }} account{{ paginator.count|pluralize }} you can see
+      </p>
+    </div>
+    {% if "account.create" in ability.capabilities %}
+      <a class="btn btn-sm btn-primary" href="{% url 'accounts:create' %}">New account</a>
+    {% endif %}
+  </div>
+
+  <form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label small" for="f-q">Search</label>
+        <div class="field-icon">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="form-control form-control-sm" id="f-q" type="search" name="q"
+                 value="{{ filters.q }}" placeholder="Name or code">
+        </div>
+      </div>
+
+      {% if shows_health %}
+        <div class="col-6 col-md-2">
+          <label class="form-label small" for="f-status">Health</label>
+          <select class="form-select form-select-sm" id="f-status" name="status">
+            <option value="">Any</option>
+            {% for value, label in health_statuses %}
+              <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="f-license">License</label>
+        <select class="form-select form-select-sm" id="f-license" name="license">
+          <option value="">Any</option>
+          {% for value, label in license_types %}
+            <option value="{{ value }}" {% if filters.license == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="f-class">Class</label>
+        <select class="form-select form-select-sm" id="f-class" name="class">
+          <option value="">Any</option>
+          {% for value, label in account_classes %}
+            <option value="{{ value }}" {% if filters.class == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="f-stage">Stage</label>
+        <select class="form-select form-select-sm" id="f-stage" name="stage">
+          <option value="">Any</option>
+          {% for value, label in lifecycle_stages %}
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="f-renewal">Renewal quarter</label>
+        <select class="form-select form-select-sm" id="f-renewal" name="renewal">
+          <option value="">Any</option>
+          {% for value, label in renewal_quarters %}
+            <option value="{{ value }}" {% if filters.renewal == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="f-managed">Managed</label>
+        <select class="form-select form-select-sm" id="f-managed" name="managed">
+          <option value="">Any</option>
+          <option value="1" {% if filters.managed == "1" %}selected{% endif %}>Managed</option>
+          <option value="0" {% if filters.managed == "0" %}selected{% endif %}>Not managed</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-1 d-flex gap-2">
+        <button class="btn btn-sm btn-primary w-100" type="submit">Filter</button>
+      </div>
+    </div>
+    {% if has_filters %}
+      <div class="mt-2">
+        <a class="small" href="{% url 'accounts:list' %}">Clear filters</a>
+      </div>
+    {% endif %}
+  </form>
+
+  <div class="card">
+    {% if has_filters %}
+      {% include "accounts/_table.html" with accounts=presented sortable=True row_actions=True empty_title="Nothing matches those filters" empty_body="Clear them above to see everything." %}
+    {% else %}
+      {% include "accounts/_table.html" with accounts=presented sortable=True row_actions=True empty_title="No accounts yet" empty_body="Import your spreadsheet, or add one by hand." %}
+    {% endif %}
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

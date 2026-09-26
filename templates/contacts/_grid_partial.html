@@ -1,0 +1,66 @@
+{% comment %}
+The nine-cell power/interest grid. Expects `rows`, `interest_labels`,
+`needs_triage` and `account`.
+
+Nine cells rather than four: influence and interest each have three levels, and
+flattening Medium away would hide exactly the contacts a CSM most needs to make
+a judgement about. Each cell is tinted by the strategy it maps to, so the four
+names from the specification are still the vocabulary on screen.
+{% endcomment %}
+<div class="pi-grid">
+  {% comment %} The corner where the two axis labels meet: it holds nothing
+  and should not be announced. {% endcomment %}
+  <div class="pi-grid-corner" aria-hidden="true"></div>
+  {% for label in interest_labels %}
+    <div class="pi-axis-label">{{ label }} interest</div>
+  {% endfor %}
+
+  {% for row in rows %}
+    <div class="pi-axis-label is-row">{{ row.influence_label }} influence</div>
+    {% for cell in row.cells %}
+      <div class="pi-cell pi-cell-{{ cell.quadrant }}">
+        <span class="pi-cell-strategy">{{ cell.quadrant_label }}</span>
+        {% for contact in cell.contacts %}
+          <div class="d-flex align-items-start gap-1">
+            {% include "contacts/_focal_point_toggle.html" with contact=contact %}
+            <a class="pi-contact fw-semibold" href="{% url 'contacts:detail' contact.pk %}">
+              {{ contact.full_name }}
+              {% if contact.title %}
+                <span class="d-block small text-body-secondary fw-normal">{{ contact.title }}</span>
+              {% endif %}
+            </a>
+          </div>
+        {% empty %}
+          <span class="text-body-secondary small">&mdash;</span>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+
+{% if needs_triage %}
+  <div class="alert alert-warning mt-3 mb-0">
+    <div class="d-flex justify-content-between align-items-start gap-3">
+      <div>
+        <strong>Needs triage ({{ needs_triage|length }})</strong>
+        <div class="small">
+          Nobody has assessed these contacts, so they have no position on the grid.
+        </div>
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          {% for contact in needs_triage %}
+            <div class="d-flex align-items-center gap-1">
+              {% include "contacts/_focal_point_toggle.html" with contact=contact %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'contacts:edit' contact.pk %}">
+                {{ contact.full_name }}
+                {% if contact.title %}&middot; {{ contact.title }}{% endif %}
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <a class="btn btn-sm btn-warning flex-shrink-0" href="{% url 'contacts:triage' %}">
+        Triage all
+      </a>
+    </div>
+  </div>
+{% endif %}

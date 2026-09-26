@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Import preview{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'importer:list' %}">Import</a></li>
+      <li class="breadcrumb-item active" aria-current="page">
+        {{ batch.original_name|default:"Batch" }}
+      </li>
+    </ol>
+  </nav>
+
+  <h1 class="h4 mb-1">{{ batch.original_name|default:"Import batch" }}</h1>
+  <p class="text-body-secondary small mb-3">{{ batch.get_kind_display }} import</p>
+
+  {% if batch.parse_error %}
+    <div class="alert alert-danger">
+      <strong>This file could not be read.</strong>
+      <div class="small mt-1">{{ batch.parse_error }}</div>
+    </div>
+  {% else %}
+
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+          <div class="text-body-secondary small text-uppercase">Rows</div>
+          <div class="h4 mb-0">{{ batch.rows_total }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+          <div class="text-body-secondary small text-uppercase">To create</div>
+          <div class="h4 mb-0 text-success">{{ batch.rows_to_create }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+          <div class="text-body-secondary small text-uppercase">To update</div>
+          <div class="h4 mb-0">{{ batch.rows_to_update }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-3">
+          <div class="text-body-secondary small text-uppercase">With errors</div>
+          <div class="h4 mb-0 {% if batch.rows_with_errors %}text-danger{% endif %}">
+            {{ batch.rows_with_errors }}
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    {% if batch.unknown_columns %}
+      <div class="alert alert-warning">
+        <strong>Columns this importer does not read:</strong>
+        {{ batch.unknown_columns|join:", " }}.
+        <div class="small mt-1">
+          Their values are ignored. If one of them matters, it needs adding to
+          the importer rather than renaming in the sheet.
+        </div>
+      </div>
+    {% endif %}
+
+    {% if batch.status == "APPLIED" %}
+      <div class="alert alert-success">
+        Applied {{ batch.applied_at|date:"j M Y H:i" }} by
+        {{ batch.applied_by.full_name|default:"a system user" }}.
+        Every imported account has a scoring baseline of
+        {{ batch.baseline_date|date:"j M Y" }}, so its day counts start there
+        rather than reading as neglect.
+      </div>
+    {% elif batch.can_apply %}
+      {% comment %}
+      The loud version of "this has not happened yet". A preview of rows that
+      are all correct looks exactly like a completed import, and a reader who
+      takes it for one goes looking for accounts that were never written.
+      {% endcomment %}
+      <form method="post" action="{% url 'importer:apply' batch.pk %}"
+            class="alert alert-warning d-block mb-3">
+        {% csrf_token %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <strong>Nothing has been imported yet.</strong>
+          <span class="small">
+            This is a preview of what the file would write. Press Import to write it.
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <button type="submit" class="btn btn-primary">
+            Import {{ batch.rows_ready }} row{{ batch.rows_ready|pluralize }}
+          </button>
+          <span class="small text-body-secondary">
+            {% if batch.rows_with_errors %}
+              The {{ batch.rows_with_errors }} row{{ batch.rows_with_errors|pluralize }}
+              with errors will be skipped. Fix the sheet and upload again to add them.
+            {% else %}
+              Everything on this sheet is importable.
+            {% endif %}
+          </span>
+        </div>
+      </form>
+    {% elif batch.rows_total %}
+      <div class="alert alert-danger">
+        No row on this sheet can be imported. Every row has an error.
+      </div>
+    {% endif %}
+
+    {% if error_rows %}
+      <div class="card mb-3 border-danger">
+        <div class="card-header text-danger">Rows that will be skipped</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Row</th><th>Client</th><th>Problem</th></tr></thead>
+            <tbody>
+              {% for row in error_rows %}
+                <tr>
+                  <td class="small">{{ row.row_number }}</td>
+                  <td class="small">{{ row.client_name|default:row.client_code|default:"—" }}</td>
+                  <td class="small">
+                    {% for error in row.errors %}
+                      <div><strong>{{ error.column }}:</strong> {{ error.message }}</div>
+                    {% endfor %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">What will be written</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Row</th><th>Code</th><th>Client</th><th>Action</th>
+              <th>{% if batch.kind == "CONTACTS" %}Position{% else %}Stage{% endif %}</th>
+              {% if batch.kind == "CONTACTS" %}<th>Channels</th>{% endif %}
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr class="{% if row.errors %}table-danger{% endif %}">
+                <td class="small">{{ row.row_number }}</td>
+                <td class="small">{{ row.client_code|default:"—" }}</td>
+                <td class="small">
+                  {% if batch.kind == "CONTACTS" %}{{ row.cleaned.full_name|default:"—" }}
+                  {% elif row.account %}
+                    <a href="{% url 'accounts:detail' row.account_id %}"
+                       class="text-decoration-none">{{ row.client_name }}</a>
+                  {% else %}
+                    {{ row.client_name|default:"—" }}
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if row.errors %}text-bg-danger{% else %}text-bg-light{% endif %}">
+                    {% if row.errors %}Skip{% else %}{{ row.get_action_display }}{% endif %}
+                  </span>
+                </td>
+                <td class="small">
+                  {% if batch.kind == "CONTACTS" %}
+                    {{ row.cleaned.influence|default:"—" }} /
+                    {{ row.cleaned.interest|default:"—" }}
+                  {% else %}{{ row.cleaned.lifecycle_stage|default:"—" }}{% endif %}
+                </td>
+                {% if batch.kind == "CONTACTS" %}
+                  <td class="small">{{ row.cleaned.channels|length }}</td>
+                {% endif %}
+                <td class="small text-body-secondary">
+                  {% for warning in row.warnings %}
+                    <div>{{ warning.message }}</div>
+                  {% endfor %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{% if batch.kind == 'CONTACTS' %}7{% else %}6{% endif %}"
+                    class="text-body-secondary py-3">No rows found in this sheet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,114 @@
+{% comment %}
+Everything you can start from one row of the account table.
+
+Expects `account` (a presenter or a model - only `id`/`pk` and the name are
+read) and `next`, the page to come back to once the action is done.
+
+Each item is gated on its own capability rather than on a role, and the menu
+does not render at all when a reader holds none of them. An ACM, for instance,
+holds none of ticket.edit, csat.record or adoption.record, so their menu is
+shorter than the full eight - not eight items with several that refuse them.
+Greying an action out tells somebody what they cannot have; leaving it out
+tells them what they can do.
+
+Delete is last, after a divider, and links to the confirmation page rather than
+posting. That page names what survives the deletion - contacts, activities,
+tasks, score history - and says the account is hidden rather than destroyed. A
+one-line "are you sure?" cannot say any of that, and is exactly the kind of
+dialog people dismiss without reading.
+{% endcomment %}
+{% if account.has_row_actions %}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-link text-body-secondary px-1" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false"
+            aria-label="Actions for {{ account.client_name }}">
+      <i class="bi bi-three-dots-vertical"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      {% if "task.create" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-check2-square me-2"></i>Add task
+          </a>
+        </li>
+      {% endif %}
+      {% if "task.create" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' account.id %}?task_type=MEETING&amp;next={{ next|urlencode }}">
+            <i class="bi bi-calendar-event me-2"></i>Add meeting
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' account.id %}?task_type=CALL&amp;next={{ next|urlencode }}">
+            <i class="bi bi-telephone me-2"></i>Add call
+          </a>
+        </li>
+      {% endif %}
+      {% if "ticket.edit" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'engagement:ticket_create' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-life-preserver me-2"></i>Add ticket
+          </a>
+        </li>
+      {% endif %}
+      {% if "adoption.record" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'engagement:adoption_create' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-graph-up-arrow me-2"></i>Add adoption event
+          </a>
+        </li>
+      {% endif %}
+      {% if "csat.record" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'engagement:csat_create' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-emoji-smile me-2"></i>Add CSAT
+          </a>
+        </li>
+      {% endif %}
+      {% if "contact.edit" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'contacts:create' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-person-plus me-2"></i>Add contact
+          </a>
+        </li>
+      {% endif %}
+
+      {% if account.can_edit or account.can_delete %}
+        <li><hr class="dropdown-divider"></li>
+      {% endif %}
+      {% if account.can_edit %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'accounts:edit' account.id %}?next={{ next|urlencode }}">
+            <i class="bi bi-pencil me-2"></i>Edit account
+          </a>
+        </li>
+      {% endif %}
+      {% if account.can_delete %}
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          {% comment %}
+          A link, not a button: HTMX intercepts it and fills the dialog, and if
+          HTMX never loads the same href still opens the confirmation page.
+          Losing the ability to delete an account because a CDN was slow is not
+          a trade worth making for a pop-up.
+          {% endcomment %}
+          <a class="dropdown-item text-danger"
+             href="{% url 'accounts:delete' account.id %}?next={{ next|urlencode }}"
+             hx-get="{% url 'accounts:delete' account.id %}?next={{ next|urlencode }}"
+             hx-target="#confirm-modal .modal-content"
+             data-bs-toggle="modal" data-bs-target="#confirm-modal">
+            <i class="bi bi-trash3 me-2"></i>Delete account
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+{% endif %}

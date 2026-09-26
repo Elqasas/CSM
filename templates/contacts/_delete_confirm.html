@@ -1,0 +1,32 @@
+{% comment %}
+The delete confirmation, as the inside of a dialog.
+
+Served to HTMX from the same view that serves the full page, so the two
+cannot say different things about what a deletion does - and unlike an
+account, this one is not undoable, which is the part that matters here.
+{% endcomment %}
+<div class="modal-header">
+  <h5 class="modal-title">Delete {{ contact.full_name }}?</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+  <div class="alert alert-danger">
+    <strong>This removes the contact entirely. It cannot be undone.</strong>
+    <p class="small mb-0 mt-1">
+      Any activity, task or CSAT response that named them keeps its own
+      record; it just no longer names anyone.
+    </p>
+  </div>
+  <dl class="row small mb-0">
+    <dt class="col-5">Account</dt><dd class="col-7">{{ contact.account.client_name }}</dd>
+    <dt class="col-5">Title</dt><dd class="col-7">{{ contact.title|default:"&mdash;" }}</dd>
+  </dl>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+  <form method="post" action="{% url 'contacts:delete' contact.pk %}">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button type="submit" class="btn btn-danger">Delete contact</button>
+  </form>
+</div>

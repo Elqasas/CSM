@@ -1,0 +1,21 @@
+{% comment %}
+An account's mark at a fixed 50x50. Expects `account` (a model or a presenter).
+
+Falls back to initials rather than a generic placeholder image: a grid of
+identical grey squares tells you nothing, whereas two letters are recognisable
+at a glance and need no upload. The tint is derived from the client code, so the
+same account keeps the same colour everywhere without anybody choosing one.
+
+Links to the account by default, because in a list the mark is the first thing
+the eye lands on and it should behave like the name beside it. Pass
+`linked=False` on the account's own page, where a link back to itself is just a
+dead end that looks live.
+{% endcomment %}
+{% if linked is False %}
+  {% include "accounts/_logo_mark.html" with account=account %}
+{% else %}
+  <a href="{% url 'accounts:detail' account.id %}" class="acct-logo-link"
+     aria-label="Open {{ account.client_name }}">
+    {% include "accounts/_logo_mark.html" with account=account %}
+  </a>
+{% endif %}

@@ -1,0 +1,140 @@
+{% comment %}
+The timeline as a table, used by one client's page and by the portfolio one, so
+the two cannot start describing the same week differently.
+
+Expects `entries` (from `activities.timeline.build`) and `show_account`, which
+is the only difference between the two callers: on a client's own page the
+client is the page.
+
+Columns rather than a stack of badges, and the same shape as the account table,
+so a reader who has learned one list can read the other. Each attribute gets its
+own column - type, priority, status, repeat, account - which is what makes a
+long list scannable down a column instead of read line by line.
+
+Day headings span the table: a flat run of thirty rows hides where one day ends
+and the next begins, which is the first thing anybody reads a timeline for.
+{% endcomment %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle mb-0 activity-table">
+    <thead>
+      <tr>
+        <th class="col-subject">Subject</th>
+        {% if show_account %}<th>Account</th>{% endif %}
+        <th>Type</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Repeat</th>
+        <th class="text-end">Due</th>
+        <th class="text-end"><span class="visually-hidden">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+        {% ifchanged entry.when %}
+          <tr class="activity-day">
+            <td colspan="{% if show_account %}8{% else %}7{% endif %}">
+              <span class="small text-uppercase fw-semibold text-body-secondary">
+                {{ entry.when|date:"l j F Y" }}
+              </span>
+              {% if entry.when == today %}
+                <span class="badge text-bg-primary ms-1">Today</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endifchanged %}
+        <tr class="{% if entry.voided %}opacity-50{% endif %}">
+          <td class="col-subject">
+            {% comment %}
+            The row opens the task to read, not to edit: most of the time the
+            question is "what is this and when is it due". Edit is a button
+            there, and on this row.
+
+            Truncated by CSS rather than by words, because a title with no
+            spaces in it stretches a column that words alone would have left
+            alone. The full text is in the tooltip.
+            {% endcomment %}
+            <div class="cell-clip" title="{{ entry.title }}">
+              {% if entry.is_task %}
+                <a class="text-decoration-none fw-medium"
+                   href="{% url 'tasks:detail' entry.source.pk %}">{{ entry.title }}</a>
+              {% else %}
+                <span class="fw-medium">{{ entry.title }}</span>
+              {% endif %}
+            </div>
+            {% if entry.who %}
+              <div class="small text-body-secondary cell-clip">{{ entry.who }}</div>
+            {% endif %}
+            {% if entry.detail %}
+              <div class="small text-body-secondary cell-clip" title="{{ entry.detail }}">
+                {{ entry.detail }}
+              </div>
+            {% endif %}
+          </td>
+          {% if show_account %}
+            <td class="small">
+              <a class="text-decoration-none"
+                 href="{% url 'activities:timeline' entry.source.account_id %}">
+                {{ entry.source.account.client_name }}
+              </a>
+            </td>
+          {% endif %}
+          <td><span class="badge text-bg-light">{{ entry.kind }}</span></td>
+          <td>
+            {% if entry.is_task %}
+              {% include "tasks/_priority.html" with task=entry.source %}
+            {% else %}
+              <span class="text-body-secondary">&mdash;</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.voided %}
+              <span class="badge text-bg-warning">Voided</span>
+            {% elif entry.nature == "planned" %}
+              <span class="badge text-bg-primary">Planned</span>
+            {% else %}
+              <span class="badge text-bg-success-subtle text-success-emphasis">Happened</span>
+            {% endif %}
+          </td>
+          <td class="small">
+            {% if entry.is_task and entry.source.series_id %}
+              <span class="badge text-bg-light" title="{{ entry.source.series.summary }}">
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                {{ entry.source.series.get_frequency_display }}
+              </span>
+            {% else %}
+              <span class="text-body-secondary">&mdash;</span>
+            {% endif %}
+          </td>
+          <td class="text-end small {% if entry.is_task and entry.source.is_overdue_now %}text-danger fw-semibold{% endif %}">
+            {% if entry.is_task %}{{ entry.source.due_display }}
+            {% else %}{{ entry.when|date:"j M Y" }}{% endif %}
+          </td>
+          <td class="text-end">
+            {% if entry.is_task %}
+              {% include "tasks/_row_buttons.html" with task=entry.source next=request.get_full_path %}
+            {% elif not entry.voided and "activity.void" in ability.capabilities %}
+              <a class="btn btn-sm btn-outline-danger"
+                 title="Void" aria-label="Void {{ entry.title }}"
+                 href="{% url 'activities:void' entry.source.pk %}">
+                <i class="bi bi-slash-circle" aria-hidden="true"></i>
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="{% if show_account %}8{% else %}7{% endif %}">
+            <div class="empty-state">
+              <i class="bi bi-clock-history"></i>
+              <div class="empty-state-title">Nothing yet</div>
+              <div class="small">
+                Every day-count health factor reads the log half of this page, so
+                an empty one scores as neglect once the baseline grace passes.
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

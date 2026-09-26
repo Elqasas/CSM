@@ -1,0 +1,985 @@
+/* Platform styles on top of Bootstrap 5.
+   Bootstrap does the layout; this file does the things Bootstrap has no opinion
+   about - the health colours, the power/interest grid, the account mark - plus
+   a light pass over surfaces and type so the whole thing reads as one product
+   rather than a default theme. Anything that could be a Bootstrap utility is
+   left as one. */
+
+/* ------------------------------------------------------------- foundations */
+
+:root {
+  /* A calmer page than pure white behind raised cards. The difference is
+     deliberately small: enough to separate a card from the page, not enough to
+     read as a coloured background. */
+  --app-page: #f6f7fb;
+  --app-surface: #ffffff;
+  --app-border: #e5e7ef;
+  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --app-shadow-lg: 0 4px 6px -2px rgba(16, 24, 40, 0.03), 0 12px 16px -4px rgba(16, 24, 40, 0.08);
+  --app-radius: 0.75rem;
+
+  /* Indigo as the single accent. One hue carries every interactive element, so
+     colour means "you can act on this" rather than decorating at random. It was
+     run through the palette validator against white: L 0.51, chroma clear of
+     the floor, 3:1 contrast, and 21.4 from the aqua used beside it. */
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+  --brand-500: #6366f1;
+  --brand-100: #e0e7ff;
+  --brand-050: #eef2ff;
+
+  --app-ink: #101828;
+  --app-ink-muted: #667085;
+
+  --health-healthy: #198754;
+  --health-watch: #b8860b;
+  --health-at-risk: #dc3545;
+  --health-none: #6c757d;
+
+  /* The four grid strategies. Warmer as the strategy demands more effort. */
+  --grid-manage-closely: #b02a37;
+  --grid-keep-satisfied: #b8860b;
+  --grid-keep-informed: #0d6efd;
+  --grid-monitor: #6c757d;
+}
+
+/* ---------------------------------------------------------------- health */
+
+.health-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  vertical-align: baseline;
+  background: var(--health-none);
+}
+.health-dot.is-healthy { background: var(--health-healthy); }
+.health-dot.is-watch { background: var(--health-watch); }
+.health-dot.is-at-risk { background: var(--health-at-risk); }
+
+.health-score { font-variant-numeric: tabular-nums; }
+
+.factor-bar {
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: #e9ecef;
+  overflow: hidden;
+}
+.factor-bar > span { display: block; height: 100%; }
+.factor-green > span { background: var(--health-healthy); }
+.factor-yellow > span { background: var(--health-watch); }
+.factor-red > span { background: var(--health-at-risk); }
+
+/* ----------------------------------------------------- power/interest grid */
+/* Nine cells, not four. Medium stays visible as Medium; the cell is tinted by
+   the strategy it maps to, so the spec's four-quadrant vocabulary survives
+   without flattening the data underneath it. */
+
+.pi-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto repeat(3, minmax(5.5rem, auto));
+  gap: 0.25rem;
+}
+
+.pi-axis-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+}
+.pi-axis-label.is-row { writing-mode: vertical-rl; transform: rotate(180deg); }
+
+.pi-cell {
+  border: 1px solid var(--bs-border-color);
+  border-left-width: 3px;
+  border-radius: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bs-body-bg);
+  min-width: 0;
+}
+.pi-cell-MANAGE_CLOSELY { border-left-color: var(--grid-manage-closely); }
+.pi-cell-KEEP_SATISFIED { border-left-color: var(--grid-keep-satisfied); }
+.pi-cell-KEEP_INFORMED { border-left-color: var(--grid-keep-informed); }
+.pi-cell-MONITOR { border-left-color: var(--grid-monitor); }
+
+.pi-cell-strategy {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.pi-contact {
+  display: block;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767.98px) {
+  .pi-grid { grid-template-columns: auto repeat(3, minmax(0, 1fr)); font-size: 0.8rem; }
+  .pi-axis-label.is-row { writing-mode: horizontal-tb; transform: none; }
+}
+
+/* --------------------------------------------------------------- staleness */
+
+.staleness { font-variant-numeric: tabular-nums; }
+.staleness.is-stale { color: var(--health-at-risk); font-weight: 600; }
+.staleness.is-ageing { color: var(--health-watch); }
+.staleness.is-never { color: var(--health-at-risk); font-style: italic; }
+
+/* ======================================================================
+   Chart tokens
+   ======================================================================
+   Every value below came out of `node scripts/validate_palette.js`, run against
+   this app's own surfaces (white in light, #212529 in dark) in both modes. None
+   of it was eyeballed.
+
+   The categorical pair is the brand indigo and an amber: indigo alone cannot
+   carry two series, and amber is the partner that survives colour blindness
+   best - the pair measures ΔE 32 protan / 27 tritan in light and 32 / 29 in
+   dark, where 8 is the floor. A teal second series looked more fashionable and
+   measured 6.3 tritan in dark, which is inside the band that is only legal with
+   a second channel. Fashion is not worth that.
+
+   The status four are the reserved traffic lights and are the one deliberate
+   exception: green against red measures 5.8 under deuteranopia in light and 4.5
+   in dark, where the floor is 8. The specification asks for traffic lights, so
+   every chart using them labels each segment with its status and count and
+   ships the same numbers as a table - colour is never the only channel there.
+   The neutral is the other exception: it fails the chroma floor because it is
+   meant to read as grey, which is what "not applicable" looks like.
+
+   Dark steps are chosen for the dark surface and its own lightness band
+   (L 0.48-0.67), not flipped from the light ones. */
+
+:root {
+  --viz-surface: #ffffff;
+  --viz-ink: #0f172a;
+  --viz-ink-muted: #64748b;
+  --viz-grid: #e2e8f0;
+  --viz-axis: #cbd5e1;
+
+  --viz-series-1: #4f46e5;
+  --viz-series-2: #c2620c;
+
+  --viz-status-good: #059669;
+  --viz-status-warning: #d97706;
+  --viz-status-critical: #e11d48;
+  --viz-status-neutral: #64748b;
+}
+
+[data-bs-theme="dark"] {
+  --app-page: #0f1117;
+  --app-surface: #171a21;
+  --app-border: #262b36;
+  --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --app-shadow-lg: 0 4px 6px -2px rgba(0, 0, 0, 0.3), 0 12px 16px -4px rgba(0, 0, 0, 0.45);
+
+  /* Lifted for the dark surface rather than reused: #4f46e5 on near-black is
+     muddy, and an accent that cannot be read is not an accent. */
+  --brand-600: #818cf8;
+  --brand-700: #a5b4fc;
+  --brand-500: #6366f1;
+  --brand-100: rgba(99, 102, 241, 0.18);
+  --brand-050: rgba(99, 102, 241, 0.10);
+
+  --app-ink: #f0f2f7;
+  --app-ink-muted: #98a2b3;
+
+  --viz-surface: #212529;
+  --viz-ink: #f8fafc;
+  --viz-ink-muted: #94a3b8;
+  --viz-grid: #2b3240;
+  --viz-axis: #3a4354;
+
+  --viz-series-1: #6366f1;
+  --viz-series-2: #d97706;
+
+  --viz-status-good: #0f9d6e;
+  --viz-status-warning: #d97706;
+  --viz-status-critical: #e23e58;
+  --viz-status-neutral: #7c8899;
+}
+
+/* ------------------------------------------------------------------ charts */
+
+.viz { display: block; max-width: 100%; height: auto; }
+
+/* A 2px surface-coloured ring separates adjacent fills, so two segments of
+   similar lightness never bleed into one shape. */
+.viz-segment {
+  stroke: var(--viz-surface);
+  stroke-width: 2;
+  transition: opacity 120ms ease;
+}
+.viz-segment:hover { opacity: 0.82; }
+
+.viz-bar { transition: opacity 120ms ease; }
+.viz-bar:hover { opacity: 0.82; }
+
+/* ------------------------------------------------- charts as controls */
+/* A segment that filters the page has to look like something you can press,
+   and the one already filtering has to be findable - otherwise a chart with a
+   single slice left is just a chart with a single slice, and the reader has no
+   idea what they clicked. Hover is not enough on its own: it says nothing on a
+   touch screen, so the selected state is a ring and a label, not a hover. */
+/* Nothing inside a chart is underlined. In SVG the rule lands on the label
+   text, so a category name turns into what reads as a hyperlink in prose - and
+   the swatch, the bar and the pill are already saying the thing is clickable. */
+.viz a,
+.viz a text,
+.viz-legend-link,
+.viz-legend-link:hover,
+.viz-legend-link:focus,
+.filter-chip,
+.filter-chip:hover,
+.filter-chip:focus { text-decoration: none; }
+
+.viz-hit { cursor: pointer; }
+.viz-hit:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.viz-hit:hover .viz-label { fill: var(--viz-ink); }
+
+.viz-segment.is-selected,
+.viz-bar.is-selected {
+  stroke: var(--viz-ink);
+  stroke-width: 2;
+  paint-order: stroke;
+}
+.viz-label.is-selected { fill: var(--viz-ink); font-weight: 600; }
+
+/* The legend row is the larger target of the two, and the only one on a phone
+   worth aiming at. */
+.viz-legend-link {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.3rem;
+  margin: -0.1rem -0.3rem;
+}
+a.viz-legend-link { cursor: pointer; }
+a.viz-legend-link:hover { background: var(--app-page); color: inherit; }
+.viz-legend-link.is-selected { background: var(--app-page); font-weight: 600; }
+.viz-clear { color: var(--brand-600); font-size: 0.7rem; }
+
+.viz-label,
+.viz-value {
+  font-size: 0.72rem;
+  fill: var(--viz-ink-muted);
+}
+.viz-value { fill: var(--viz-ink); font-variant-numeric: tabular-nums; }
+
+.viz-grid-line { stroke: var(--viz-grid); stroke-width: 1; }
+.viz-axis-line { stroke: var(--viz-axis); stroke-width: 1; }
+
+.viz-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* A surface ring keeps a marker legible where two series cross. */
+.viz-marker { stroke: var(--viz-surface); stroke-width: 2; }
+
+.viz-donut-total {
+  font-size: 1.35rem;
+  font-weight: 600;
+  fill: var(--viz-ink);
+  text-anchor: middle;
+}
+.viz-donut-caption {
+  font-size: 0.68rem;
+  fill: var(--viz-ink-muted);
+  text-anchor: middle;
+}
+
+/* --------------------------------------------------------------- legends */
+
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+.viz-legend li { display: flex; align-items: center; gap: 0.35rem; }
+.viz-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.15rem;
+  flex: 0 0 auto;
+}
+/* Text stays in ink, never the series colour; the swatch carries identity. */
+.viz-legend-value { font-variant-numeric: tabular-nums; color: var(--bs-secondary-color); }
+
+.stat-value {
+  font-size: 2.1rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+
+/* ------------------------------------------------- table column widths */
+/* Layout, so it lives here. The inline styles that remain in templates are
+   data - a bar's length, a swatch's palette token - and cannot be hoisted
+   into a stylesheet without inventing a class per value. */
+
+.col-assess { width: 14rem; }
+.col-actions { width: 7rem; }
+.col-points { width: 8rem; }
+
+
+/* ======================================================================
+   Account logo
+   ======================================================================
+   One size, everywhere: 50x50. Fixed rather than fluid because it appears in a
+   table row, a page header and a card, and a mark that changes size between
+   them reads as three different things. */
+
+.acct-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 0.5rem;
+  object-fit: contain;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.acct-logo-initials {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: #fff;
+  border-color: transparent;
+  user-select: none;
+}
+
+/* Two tints rather than a generated palette: enough to break up a long list,
+   too few to look like they encode something they do not. */
+.acct-tint-a { background: #3f5c8a; }
+.acct-tint-b { background: #6b5b95; }
+
+.acct-logo-sm { width: 32px; height: 32px; border-radius: 0.375rem; font-size: 0.75rem; }
+
+
+/* ======================================================================
+   Surfaces and type
+   ====================================================================== */
+
+body {
+  background: var(--app-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  border-color: var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+  background: var(--app-surface);
+}
+
+.card-header {
+  background: transparent;
+  border-bottom-color: var(--app-border);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Page titles sit closer to their subtitle than Bootstrap's default, so the
+   two read as one block rather than two. */
+h1.h3, h1.h4 { letter-spacing: -0.015em; }
+h1 + p.text-body-secondary { margin-top: 0.125rem; }
+
+.navbar {
+  box-shadow: var(--app-shadow);
+  background: var(--app-surface) !important;
+}
+.navbar-brand { letter-spacing: -0.01em; }
+.nav-link.active { font-weight: 600; }
+
+.breadcrumb { font-size: 0.8125rem; margin-bottom: 0.75rem; }
+
+/* Tables: quieter headers, roomier rows. A dense table of client names is the
+   screen people look at longest. */
+.table > thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  border-bottom-width: 1px;
+}
+.table > tbody > tr > td { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.table-hover > tbody > tr:hover > * { background-color: rgba(13, 110, 253, 0.035); }
+
+.form-label { font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; }
+.form-text { font-size: 0.8125rem; }
+
+/* ---------------------------------------------------------- health as pills */
+/* A bare dot beside text makes the reader do the joining. A pill carries the
+   colour, the word and the number as one object, which is what a status is. */
+
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.health-pill .health-dot { width: 0.5rem; height: 0.5rem; }
+
+.health-pill.is-healthy {
+  color: #0a6b33; background: #e7f6ed; border-color: #b7e3c7;
+}
+.health-pill.is-watch {
+  color: #8a5a00; background: #fdf3e2; border-color: #f3d9a8;
+}
+.health-pill.is-at-risk {
+  color: #a32020; background: #fdecec; border-color: #f4c2c2;
+}
+.health-pill.is-none {
+  color: var(--bs-secondary-color); background: var(--bs-secondary-bg); border-color: var(--app-border);
+}
+
+[data-bs-theme="dark"] .health-pill.is-healthy {
+  color: #7ddba2; background: rgba(25, 135, 84, 0.16); border-color: rgba(25, 135, 84, 0.4);
+}
+[data-bs-theme="dark"] .health-pill.is-watch {
+  color: #f0c265; background: rgba(184, 134, 11, 0.16); border-color: rgba(184, 134, 11, 0.4);
+}
+[data-bs-theme="dark"] .health-pill.is-at-risk {
+  color: #f19c9c; background: rgba(220, 53, 69, 0.16); border-color: rgba(220, 53, 69, 0.4);
+}
+
+/* -------------------------------------------------------------- stat tiles */
+
+.stat-value { letter-spacing: -0.02em; }
+
+.stat-card .card-body { padding: 1rem 1.125rem; }
+.stat-card .text-uppercase {
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------ empty states */
+/* An empty list is a normal state here - a new install has no accounts - so it
+   gets a sentence rather than a blank rectangle. */
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--bs-secondary-color);
+}
+.empty-state .bi { font-size: 1.75rem; opacity: 0.4; display: block; margin-bottom: 0.5rem; }
+.empty-state-title { font-weight: 600; color: var(--bs-body-color); margin-bottom: 0.25rem; }
+
+/* ======================================================================
+   Modern pass
+   ======================================================================
+   Bootstrap's own variables are overridden rather than fought, so components
+   this file never mentions still pick the accent up. */
+
+:root,
+[data-bs-theme="light"],
+[data-bs-theme="dark"] {
+  --bs-primary: var(--brand-600);
+  --bs-link-color: var(--brand-600);
+  --bs-link-hover-color: var(--brand-700);
+  --bs-border-radius: var(--app-radius);
+  --bs-border-radius-sm: 0.5rem;
+  --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body { color: var(--app-ink); }
+
+/* ------------------------------------------------------------------ chrome */
+
+.navbar {
+  border-bottom: 1px solid var(--app-border) !important;
+  box-shadow: none;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.navbar-brand { font-weight: 650; color: var(--app-ink); }
+.navbar-brand .bi { color: var(--brand-600); }
+
+/* A pill for the active tab rather than an underline: it survives a wrapped
+   navbar on a narrow screen, where an underline detaches from its label. */
+.navbar .nav-link {
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  color: var(--app-ink-muted);
+  font-size: 0.9rem;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.navbar .nav-link:hover { background: var(--app-page); color: var(--app-ink); }
+.navbar .nav-link.active {
+  background: var(--brand-050);
+  color: var(--brand-700);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- cards */
+
+.card {
+  border-radius: var(--app-radius);
+  transition: box-shadow 140ms ease;
+}
+.card-header { font-size: 0.8125rem; letter-spacing: 0.005em; }
+
+/* Only cards that link somewhere lift on hover. Lifting everything makes the
+   gesture meaningless. */
+.card:has(.stretched-link):hover { box-shadow: var(--app-shadow-lg); }
+
+.stat-card .display-6 {
+  font-size: 2rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--app-ink);
+}
+.stat-card .text-uppercase { color: var(--app-ink-muted); }
+
+/* ------------------------------------------------------------------ inputs */
+
+.form-control, .form-select {
+  border-color: var(--app-border);
+  border-radius: 0.5rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+.form-check-input:checked {
+  background-color: var(--brand-600);
+  border-color: var(--brand-600);
+}
+.form-check-input:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+
+/* ----------------------------------------------------------------- buttons */
+
+.btn { border-radius: 0.5rem; font-weight: 500; }
+.btn:focus-visible { box-shadow: 0 0 0 3px var(--brand-100); }
+
+.btn-primary {
+  --bs-btn-bg: var(--brand-600);
+  --bs-btn-border-color: var(--brand-600);
+  --bs-btn-hover-bg: var(--brand-700);
+  --bs-btn-hover-border-color: var(--brand-700);
+  --bs-btn-active-bg: var(--brand-700);
+  --bs-btn-disabled-bg: var(--brand-500);
+  --bs-btn-disabled-border-color: var(--brand-500);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--brand-600);
+  --bs-btn-border-color: var(--brand-600);
+  --bs-btn-hover-bg: var(--brand-600);
+  --bs-btn-hover-border-color: var(--brand-600);
+}
+.btn-outline-secondary {
+  --bs-btn-color: var(--app-ink-muted);
+  --bs-btn-border-color: var(--app-border);
+  --bs-btn-hover-bg: var(--app-page);
+  --bs-btn-hover-color: var(--app-ink);
+  --bs-btn-hover-border-color: var(--app-border);
+}
+
+/* ------------------------------------------------------------------ tables */
+
+.table { --bs-table-border-color: var(--app-border); }
+.table > thead th {
+  background: var(--app-page);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+.table > thead th:first-child { border-top-left-radius: var(--app-radius); }
+.table > thead th:last-child { border-top-right-radius: var(--app-radius); }
+.table-hover > tbody > tr:hover > * { background-color: var(--brand-050); }
+.card > .table-responsive { border-radius: var(--app-radius); overflow: hidden; }
+
+/* ------------------------------------------------------------------ badges */
+
+.badge { font-weight: 500; letter-spacing: 0.01em; padding: 0.3em 0.6em; }
+.badge.text-bg-light {
+  background: var(--app-page) !important;
+  color: var(--app-ink-muted) !important;
+  border: 1px solid var(--app-border);
+}
+
+/* ------------------------------------------------------------- breadcrumbs */
+
+.breadcrumb-item + .breadcrumb-item::before { color: var(--app-ink-muted); }
+.breadcrumb a { color: var(--app-ink-muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--brand-600); }
+
+/* ------------------------------------------------------------------ alerts */
+
+.alert { border-radius: var(--app-radius); border-width: 1px; }
+
+/* ------------------------------------------------------- the grid, refined */
+
+.pi-cell {
+  border-radius: 0.5rem;
+  border-left-width: 3px;
+  transition: background-color 120ms ease;
+}
+.pi-cell:hover { background: var(--app-page); }
+.pi-contact { color: var(--app-ink); }
+.pi-contact:hover { color: var(--brand-600); }
+
+
+/* An icon inside a field rather than beside it. A separate input-group button
+   would imply Enter is not enough, and adds a tab stop between the person and
+   their results. Used by both search boxes, so they cannot drift apart. */
+.field-icon { position: relative; }
+.field-icon .form-control { padding-left: 2rem; }
+.field-icon > .bi {
+  position: absolute;
+  left: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--app-ink-muted);
+  font-size: 0.875rem;
+  pointer-events: none;
+  z-index: 4;
+}
+.field-icon:focus-within > .bi { color: var(--brand-600); }
+.field-icon input[type="search"]::-webkit-search-cancel-button { margin-left: 0.25rem; }
+
+/* The bar's search is the most-used control on the page, so it gets the room -
+   a default-width input truncates most client names before you finish typing.
+   21rem rather than the 28rem it started at: the placeholder still fits on one
+   line, which is the width that actually matters, and the nav links get the
+   difference back. It is a basis, not a fixed width, so a narrow window still
+   shrinks it down to the 12rem floor. */
+.app-search { flex: 0 1 21rem; min-width: 12rem; }
+.app-search .form-control { width: 100%; }
+
+
+/* A stat that is also a way in. The number keeps its status colour; the block
+   around it gets the hover, so the whole tile is the target rather than four
+   digits. */
+.stat-link {
+  display: block;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.25rem;
+  transition: background-color 120ms ease;
+}
+.stat-link,
+.stat-link:hover,
+.stat-link:focus { text-decoration: none; }
+.stat-link:hover { background: var(--app-page); }
+.stat-link .stat-value { font-size: 1.75rem; display: block; line-height: 1.1; }
+.stat-link.is-selected {
+  background: var(--app-page);
+  box-shadow: inset 0 0 0 1px var(--brand-600);
+}
+.stat-link.is-selected .bi { color: var(--brand-600); }
+
+/* ======================================================================
+   Ordinal ramp
+   ======================================================================
+   One hue, dark to light, for Class: VIP through D is a ranking, and a ramp
+   carries that ordering where five categorical hues would throw it away.
+   Validated as an ordinal ramp - monotone lightness, every adjacent gap clear,
+   and the lightest step still visible against the card it sits on. */
+
+:root {
+  --viz-rank-1: #312e81;
+  --viz-rank-2: #4338ca;
+  --viz-rank-3: #4f46e5;
+  --viz-rank-4: #818cf8;
+  --viz-rank-5: #a5b4fc;
+}
+
+/* Dark mode runs the other way: on a dark surface the darkest step is the one
+   that disappears, so the ramp is re-stepped rather than reused. */
+[data-bs-theme="dark"] {
+  --viz-rank-1: #e0e7ff;
+  --viz-rank-2: #c7d2fe;
+  --viz-rank-3: #a5b4fc;
+  --viz-rank-4: #818cf8;
+  --viz-rank-5: #6366f1;
+}
+
+/* --------------------------------------------------------- chart polish */
+
+/* Charts breathe a little more now that three share a row. */
+.card-body > .viz { margin-top: 0.25rem; }
+
+/* A donut and its legend stack on a narrow card instead of squeezing. */
+@media (max-width: 575.98px) {
+  .card-body > .d-flex.flex-wrap > .viz { margin: 0 auto; }
+}
+
+.viz-legend li { line-height: 1.3; }
+.viz-swatch { box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.06); }
+
+/* The table view is a fallback, not a feature to advertise. */
+details > summary { cursor: pointer; }
+details > summary:hover { color: var(--brand-600); }
+
+
+/* The mark is a link wherever it sits beside a name, so it gets the same
+   affordance the name has - without the underline, which would sit under a
+   50px square and look like a mistake. */
+.acct-logo-link {
+  display: inline-flex;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.acct-logo-link:hover .acct-logo {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+.acct-logo-link:focus-visible { outline: none; }
+.acct-logo-link:focus-visible .acct-logo {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+
+
+/* Quick create. Square rather than wide, because it carries an icon and no
+   word - the menu it opens does the naming. */
+.app-create {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+.app-create::after { display: none; }  /* no caret: the plus is the affordance */
+
+.dropdown-menu {
+  border-color: var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-lg);
+  padding: 0.35rem;
+}
+.dropdown-item { border-radius: 0.375rem; padding: 0.4rem 0.6rem; }
+.dropdown-item:active { background: var(--brand-600); }
+.dropdown-header {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: 0.35rem 0.6rem 0.25rem;
+}
+
+/* A chip for one active filter, with its own way off. The charts toggle
+   themselves while their segment is still on screen; narrow the page to nothing
+   and it is not, so this is the only per-filter way back. */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--app-ink);
+  background: var(--app-page);
+  border: 1px solid var(--bs-border-color);
+}
+.filter-chip:hover {
+  color: var(--app-ink);
+  border-color: var(--brand-600);
+}
+.filter-chip .bi { color: var(--app-ink-muted); }
+.filter-chip:hover .bi { color: var(--brand-600); }
+
+/* A sortable column heading. No arrow: the sorted one is marked with aria-sort,
+   which a screen reader announces, and weighted here - nine headings with a
+   glyph each is noise, and the glyph is the first thing to point the wrong way
+   when somebody changes the default order. */
+.th-sort {
+  color: inherit;
+  text-decoration: none;
+  display: inline-block;
+}
+.th-sort:hover { color: var(--brand-600); }
+th[aria-sort="ascending"] .th-sort,
+th[aria-sort="descending"] .th-sort { color: var(--brand-600); }
+
+/* A segmented control: a short closed list shown in the open rather than
+   folded into a dropdown. The radio itself is hidden by Bootstrap's btn-check,
+   so this is styling on a real radio group - not a set of buttons pretending. */
+.seg-group .btn {
+  --bs-btn-color: var(--app-ink-muted);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-bg: var(--app-page);
+  --bs-btn-hover-color: var(--app-ink);
+  --bs-btn-active-bg: var(--brand-600);
+  --bs-btn-active-border-color: var(--brand-600);
+  --bs-btn-active-color: #fff;
+  font-weight: 500;
+}
+.seg-group .btn-check:checked + .btn { box-shadow: none; }
+.seg-group .btn-check:focus-visible + .btn {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+
+/* The repeat rule, folded away until the switch is on. CSS rather than script:
+   a slow CDN would otherwise leave the panel shut with no way to open it, and
+   the worst case here is a panel that stays visible - the fields are ignored
+   when the switch is off anyway. */
+.repeat-block .repeat-rule { display: none; }
+.repeat-block:has(input[name="repeat"]:checked) .repeat-rule { display: block; }
+
+/* ======================================================================
+   Calendar
+   ====================================================================== */
+
+.cal-month { table-layout: fixed; }
+.cal-month th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-ink-muted);
+  font-weight: 600;
+}
+.cal-month td {
+  height: 7.5rem;
+  vertical-align: top;
+  padding: 0.35rem;
+}
+.cal-outside { background: var(--app-page); }
+.cal-outside .cal-daynum { color: var(--app-ink-muted); }
+.cal-today { box-shadow: inset 0 0 0 2px var(--brand-600); }
+.cal-daynum {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-ink);
+  text-decoration: none;
+}
+.cal-daynum:hover { color: var(--brand-600); }
+
+/* One entry. The priority is a left border rather than a fill: colour is never
+   the only channel, and the kind is spelled out beside every one of them. */
+.cal-entry {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  border-left: 3px solid var(--bs-border-color);
+  background: var(--app-page);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-entry .cal-entry-link { color: inherit; text-decoration: none; }
+.cal-entry .cal-time { font-variant-numeric: tabular-nums; margin-right: 0.25rem; }
+.cal-entry .cal-kind { color: var(--app-ink-muted); margin-left: 0.25rem; }
+
+.cal-entry.prio-high { border-left-color: var(--viz-status-critical); }
+.cal-entry.prio-medium { border-left-color: var(--brand-600); }
+.cal-entry.prio-low { border-left-color: var(--bs-border-color); }
+
+/* A forecast, drawn as an outline. A repeat that has not been raised yet is not
+   a commitment, and it must not look like one. */
+.cal-entry.is-projected {
+  background: transparent;
+  border: 1px dashed var(--bs-border-color);
+  border-left-width: 3px;
+  border-left-style: solid;
+  color: var(--app-ink-muted);
+}
+.cal-entry.is-happened {
+  background: transparent;
+  border-left-color: var(--viz-status-good);
+  color: var(--app-ink-muted);
+}
+
+/* The non-working days. Greyed rather than removed by default: a week you can
+   see the shape of is easier to read than one with two columns missing, and
+   somebody who disagrees can hide them in the calendar settings. */
+.cal-weekend { background: var(--app-page); }
+.cal-weekend .cal-daynum { color: var(--app-ink-muted); }
+
+/* The activity table, on the page and in the My day card. A day heading is a
+   row rather than a separate list, so the columns stay aligned across it. */
+.activity-table > tbody > tr.activity-day > td {
+  background: var(--app-page);
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+.activity-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-ink-muted);
+  font-weight: 600;
+}
+/* The icon buttons keep a square footprint so a column of them lines up. */
+.row-actions .btn { --bs-btn-padding-x: 0.45rem; line-height: 1.1; }
+
+/* A subject column that does not grow with its longest title. The cell caps at
+   a quarter of the table; the text inside it clips with an ellipsis and keeps
+   the full string in a tooltip. max-width on the cell is what makes the child's
+   overflow work at all - a table cell is otherwise sized by its content. */
+.activity-table .col-subject { width: 25%; max-width: 0; }
+.activity-table td.col-subject { max-width: 0; }
+.cell-clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A settings card: a whole tile is the target, not a link inside one. */
+.settings-card { color: inherit; transition: box-shadow 140ms ease; }
+.settings-card:hover { box-shadow: var(--app-shadow-lg); color: inherit; }
+.settings-icon {
+  font-size: 1.35rem;
+  color: var(--brand-600);
+  margin-bottom: 0.35rem;
+}
+
+/* Today, in the calendar. A ring alone was easy to miss in a grid of forty-two
+   cells, so the number wears the brand colour too. */
+.cal-today { box-shadow: inset 0 0 0 2px var(--brand-600); }
+.cal-today .cal-daynum {
+  background: var(--brand-600);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+/* A row that opens what it describes. The pointer is the only affordance it
+   needs - the row already highlights on hover through .table-hover. */
+tr.row-link { cursor: pointer; }

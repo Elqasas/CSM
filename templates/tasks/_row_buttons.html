@@ -1,0 +1,33 @@
+{% comment %}
+The three things you do to a task, as icons. Expects `task` and `next`.
+
+Icons rather than words because these repeat on every row of a long list, and
+three words per row is more furniture than content. Each carries an aria-label
+and a title: an icon-only button with no accessible name does not exist to a
+screen reader, and "x" read aloud is not "delete".
+
+Each is a POST with its own CSRF token. A GET that completes or deletes a task
+would be followed by any link prefetcher that passed.
+{% endcomment %}
+<div class="d-inline-flex gap-1 row-actions">
+  {% if task.status == "PENDING" and "task.complete" in ability.capabilities %}
+    <form method="post" action="{% url 'tasks:complete' task.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-sm btn-outline-success" type="submit"
+              title="Mark done" aria-label="Mark {{ task.title }} done">
+        <i class="bi bi-check-lg" aria-hidden="true"></i>
+      </button>
+    </form>
+  {% endif %}
+  {% if "task.edit" in ability.capabilities %}
+    <a class="btn btn-sm btn-outline-secondary"
+       href="{% url 'tasks:edit' task.pk %}?next={{ next|urlencode }}"
+       title="Edit" aria-label="Edit {{ task.title }}">
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+    </a>
+  {% endif %}
+  {% if task.status == "PENDING" and "task.delete" in ability.capabilities %}
+    {% include "tasks/_delete_button.html" with task=task next=next %}
+  {% endif %}
+</div>

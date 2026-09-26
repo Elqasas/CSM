@@ -1,0 +1,63 @@
+{% comment %}
+The repeat block: a switch, and the rule it reveals. Expects `form`.
+
+Hidden until the switch is on, with CSS rather than script - `:has()` is what
+every current browser uses for exactly this. If it were script, a slow CDN would
+leave the panel shut with no way to open it; as CSS the worst case is a panel
+that is always visible, and the fields are ignored anyway when the switch is off.
+
+A repeat is a rule and one live occurrence, never a hundred rows written up
+front: "Never" has no end to write up to, and a year of a daily task is three
+hundred entries nobody asked to see. Finishing one creates the next.
+{% endcomment %}
+<div class="repeat-block border rounded p-3 mb-3">
+  <div class="form-check form-switch mb-0">
+    {{ form.repeat }}
+    <label class="form-check-label fw-medium" for="{{ form.repeat.id_for_label }}">
+      Repeat
+    </label>
+  </div>
+
+  <div class="repeat-rule mt-3">
+    <div class="row g-3 align-items-start">
+      <div class="col-12 col-sm-5">
+        <label class="form-label" for="{{ form.repeat_frequency.id_for_label }}">
+          {{ form.repeat_frequency.label }}
+        </label>
+        {{ form.repeat_frequency }}
+        {% for error in form.repeat_frequency.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="col-12 col-sm-7">
+        <span class="form-label d-block">{{ form.repeat_ends.label }}</span>
+        {% for choice in form.repeat_ends %}
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="form-check mb-0">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">
+                {% if choice.data.value == "AFTER" %}After
+                {% elif choice.data.value == "ON" %}On
+                {% else %}Never{% endif %}
+              </label>
+            </div>
+            {% if choice.data.value == "AFTER" %}
+              <div style="max-width: 6rem;">{{ form.repeat_count }}</div>
+              <span class="small text-body-secondary">times</span>
+            {% elif choice.data.value == "ON" %}
+              <div style="max-width: 11rem;">{{ form.repeat_until }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        {% for error in form.repeat_ends.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        {% for error in form.repeat_count.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        {% for error in form.repeat_until.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+    <p class="small text-body-secondary mb-0 mt-2">
+      One at a time: the next is created when you finish the current one, so a
+      repeat you have not done sits there rather than piling up copies.
+    </p>
+  </div>
+</div>

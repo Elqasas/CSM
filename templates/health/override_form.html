@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Override health &middot; {{ account.client_name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item"><a href="{% url 'health:panel' account.pk %}">Health</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Override</li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <h1 class="h4 mb-3">Override health status</h1>
+
+      <div class="alert alert-secondary small">
+        An override replaces the computed status until the computed score
+        <em>changes at all</em> &mdash; any movement clears it, not just movement
+        across a band. That is deliberate: the override records a judgement about
+        a specific score, and once the score moves the judgement is about
+        something that no longer exists.
+      </div>
+
+      {% if override %}
+        <div class="alert alert-warning small">
+          This account is already overridden to
+          <strong>{{ override.get_status_display }}</strong>. Saving replaces that
+          override; the existing one is kept in history as superseded.
+        </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+              <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-warning">Apply override</button>
+              <a class="btn btn-outline-secondary" href="{% url 'health:panel' account.pk %}">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

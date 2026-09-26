@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Log activity &middot; {{ account.client_name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Log activity</li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <h1 class="h4 mb-3">Log activity</h1>
+
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.activity_type.id_for_label }}">
+                {{ form.activity_type.label }}
+              </label>
+              {{ form.activity_type }}
+              <div class="form-text">
+                The engine filters on this. Meetings are excluded from Weekly
+                Contact and counted under Meeting Attendance instead, so one
+                meeting never scores twice.
+              </div>
+              {% for error in form.activity_type.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            {% comment %} Prominent rather than tucked at the bottom: an activity log with no
+               contacts on it cannot answer who has gone quiet. {% endcomment %}
+            <div class="mb-3 p-3 bg-body-tertiary rounded">
+              <label class="form-label fw-semibold" for="{{ form.contact.id_for_label }}">
+                Who did you speak to?
+              </label>
+              {{ form.contact }}
+              <div class="form-text">
+                Optional, but this is what makes the contact attention list work.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.occurred_on.id_for_label }}">
+                {{ form.occurred_on.label }}
+              </label>
+              {{ form.occurred_on }}
+              {% for error in form.occurred_on.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.subject.id_for_label }}">
+                {{ form.subject.label }}
+              </label>
+              {{ form.subject }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.notes.id_for_label }}">
+                {{ form.notes.label }}
+              </label>
+              {{ form.notes }}
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Log it</button>
+              <a class="btn btn-outline-secondary"
+                 href="{% if next %}{{ next }}{% else %}{% url 'accounts:detail' account.pk %}{% endif %}">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

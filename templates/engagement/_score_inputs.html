@@ -1,0 +1,152 @@
+{% comment %}
+The three things the health engine reads: tickets, CSAT and adoption events.
+
+They live on the health page, in the column beside the factors, because
+recording one of them is why somebody opens the page: the arithmetic explains
+the number, and these are what change it. Reading the factors on one page and
+the evidence on another meant holding both in your head.
+
+Saving any of them rescores the account, through the model hook rather than
+through any view.
+{% endcomment %}
+<div class="row g-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>
+            Tickets
+            <span class="badge text-bg-light ms-1">{{ open_tickets }} open</span>
+            <span class="badge text-bg-secondary ms-1" title="Bugs count three, general tickets one">
+              weighted {{ ticket_weight }}
+            </span>
+          </span>
+          {% if "ticket.edit" in ability.capabilities %}
+            <a class="btn btn-sm btn-outline-primary"
+               href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}"
+               title="Add a ticket" aria-label="Add a ticket">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            </a>
+          {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for ticket in tickets %}
+            <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div class="min-width-0">
+                <span class="badge {% if ticket.ticket_kind == 'BUG' %}text-bg-danger{% else %}text-bg-light{% endif %}">
+                  {{ ticket.get_ticket_kind_display }}
+                </span>
+                <span class="{% if ticket.status == 'CLOSED' %}text-body-secondary text-decoration-line-through{% endif %}">
+                  {{ ticket.title }}
+                </span>
+                <div class="small text-body-secondary">
+                  opened {{ ticket.opened_on|date:"j M Y" }}
+                  {% if ticket.closed_on %} &middot; closed {{ ticket.closed_on|date:"j M Y" }}{% endif %}
+                </div>
+              </div>
+              {% if "ticket.edit" in ability.capabilities %}
+                <div class="d-flex gap-1 flex-shrink-0">
+                  {% if ticket.status != "CLOSED" %}
+                    <form method="post" action="{% url 'engagement:ticket_close' account.pk ticket.pk %}">
+                      {% csrf_token %}
+                      <button class="btn btn-sm btn-outline-success" type="submit">Close</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{% url 'engagement:delete' account.pk 'ticket' ticket.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
+                  </form>
+                </div>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              No tickets. Zero open tickets is green.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>CSAT ratings</span>
+          {% if "csat.record" in ability.capabilities %}
+            <a class="btn btn-sm btn-outline-primary"
+               href="{% url 'engagement:csat_create' account.pk %}?next={{ request.path|urlencode }}"
+               title="Record a CSAT rating" aria-label="Record a CSAT rating">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            </a>
+          {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for rating in csat %}
+            <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <span class="badge
+                  {% if rating.score >= 4 %}text-bg-success
+                  {% elif rating.score == 3 %}text-bg-warning
+                  {% else %}text-bg-danger{% endif %}">{{ rating.score }}/5</span>
+                <span class="small text-body-secondary">
+                  {{ rating.recorded_on|date:"j M Y" }}
+                  {% if rating.contact %} &middot; {{ rating.contact.full_name }}{% endif %}
+                </span>
+                {% if rating.comment %}
+                  <div class="small">{{ rating.comment|truncatewords:20 }}</div>
+                {% endif %}
+              </div>
+              {% if "csat.record" in ability.capabilities %}
+                <form method="post" action="{% url 'engagement:delete' account.pk 'csat' rating.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              No rating on record, which scores fifty rather than zero.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Adoption events</span>
+          {% if "adoption.record" in ability.capabilities %}
+            <a class="btn btn-sm btn-outline-primary"
+               href="{% url 'engagement:adoption_create' account.pk %}?next={{ request.path|urlencode }}"
+               title="Add an adoption event" aria-label="Add an adoption event">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            </a>
+          {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for event in adoption %}
+            <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <span class="badge text-bg-light">{{ event.get_event_type_display }}</span>
+                {{ event.title|default:"" }}
+                <div class="small text-body-secondary">
+                  {{ event.occurred_on|date:"j M Y" }}
+                  ({{ event.occurred_on|timesince:today }} ago)
+                </div>
+              </div>
+              {% if "adoption.record" in ability.capabilities %}
+                <form method="post" action="{% url 'engagement:delete' account.pk 'adoption' event.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              Nothing recorded. Monthly Adoption reads as red past thirty days.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+</div>

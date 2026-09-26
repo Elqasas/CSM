@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Remove {{ target.full_name }}{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-12 col-lg-6">
+      <h1 class="h4 mb-3">Remove {{ target.full_name }}?</h1>
+
+      {% if owned %}
+        <div class="alert alert-warning">
+          <strong>They hold {{ owned }} account{{ owned|pluralize }}, so this deactivates rather than deletes.</strong>
+          <p class="small mb-0 mt-1">
+            They stop being able to sign in and see nothing, but the accounts keep
+            their owner and every activity, task and score they recorded stays
+            attributed to them. Reassign those accounts first if you want the
+            record gone entirely.
+          </p>
+        </div>
+      {% else %}
+        <div class="alert alert-danger">
+          <strong>They hold no accounts, so this deletes the record outright.</strong>
+          <p class="small mb-0 mt-1">This cannot be undone.</p>
+        </div>
+      {% endif %}
+
+      <dl class="row small">
+        <dt class="col-4">Email</dt><dd class="col-8">{{ target.email }}</dd>
+        <dt class="col-4">Level</dt><dd class="col-8">{{ target.effective_level_label }}</dd>
+        <dt class="col-4">Accounts</dt><dd class="col-8">{{ owned }}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          {% if owned %}Deactivate{% else %}Delete{% endif %}
+        </button>
+        <a class="btn btn-outline-secondary" href="{% url 'users:staff_list' %}">Cancel</a>
+      </form>
+    </div>
+  </div>
+{% endblock %}

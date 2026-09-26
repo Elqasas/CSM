@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Triage contacts{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Contacts awaiting assessment</h1>
+      <p class="text-body-secondary small mb-0">
+        Nobody has placed these on the grid. Until they are assessed they have no
+        position and do not appear in the attention list.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'contacts:attention' %}">
+        Attention list
+      </a>
+      {% if "contact.edit" in ability.capabilities %}
+        <a class="btn btn-sm btn-primary" href="{% url 'contacts:create_anywhere' %}">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          Add contact
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="get" class="card card-body py-2 mb-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="field-icon">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="form-control form-control-sm" type="search" name="q"
+                 value="{{ q }}" aria-label="Search contacts"
+                 placeholder="Name, title, email or account">
+        </div>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary" type="submit">Search</button>
+      </div>
+      {% if q %}
+        <div class="col-auto">
+          <a class="small" href="{{ request.path }}">Clear</a>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Contact</th><th>Account</th><th class="col-assess">Influence</th>
+            <th class="col-assess">Interest</th><th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contact in contacts %}
+            <tr id="contact-{{ contact.pk }}">
+              <td>
+                <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
+                  {{ contact.full_name }}
+                </a>
+                {% if contact.title %}
+                  <div class="small text-body-secondary">{{ contact.title }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'accounts:detail' contact.account_id %}" class="text-decoration-none">
+                  {{ contact.account.client_name }}
+                </a>
+              </td>
+              {% if "contact.edit" in ability.capabilities %}
+                {% comment %} No <form> here: a form between table cells is invalid HTML and
+                   the browser hoists it out of the row, which would leave the
+                   selects behind. The button carries the request and picks the
+                   row's inputs up with hx-include instead. {% endcomment %}
+                <td>
+                  <select name="influence" class="form-select form-select-sm" required>
+                    <option value="">Choose&hellip;</option>
+                    {% for value, label in assessment_form.fields.influence.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <select name="interest" class="form-select form-select-sm" required>
+                    <option value="">Choose&hellip;</option>
+                    {% for value, label in assessment_form.fields.interest.choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-primary"
+                          hx-post="{% url 'contacts:assess' contact.pk %}"
+                          hx-include="closest tr"
+                          hx-target="#contact-{{ contact.pk }}"
+                          hx-swap="outerHTML">
+                    Save
+                  </button>
+                </td>
+              {% else %}
+                <td colspan="3" class="text-body-secondary small">Not assessed</td>
+              {% endif %}
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  {% if q %}
+                    <div class="empty-state-title">Nobody matches &ldquo;{{ q }}&rdquo;</div>
+                    <div class="small"><a href="{{ request.path }}">Clear the search</a>.</div>
+                  {% else %}
+                    <div class="empty-state-title">Nothing to triage</div>
+                    <div class="small">Every contact has been assessed.</div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

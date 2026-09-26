@@ -1,0 +1,149 @@
+{% load query %}
+{% comment %}
+The account table, defined once and used by both the account list and the
+analytics roster. Two copies of this markup would drift the first time a column
+changed, and the two pages would quietly start describing the same accounts
+differently.
+
+Every column heading sorts, and both pages sort by the same keys because both go
+through `accounts.filters.apply_sort`. The links carry the query string with
+them: a bare `?sort=name` - which these used to be - threw away the search and
+the filters, so sorting a filtered list silently unfiltered it.
+
+No arrows. The sorted column is marked with `aria-sort`, which a screen reader
+announces and the stylesheet weights, rather than putting a glyph beside nine
+headings.
+
+Expects:
+  accounts     AccountPresenter objects, never raw models - the health columns
+               go through the presenter, which is what makes the gating real.
+  shows_health whether to render the status dot and the health column.
+  row_actions  whether each row carries its own actions menu. The account
+               list does; the analytics roster deliberately does not - it is a
+               report you read, and a delete beside a chart is a misclick.
+  sortable     whether the headings link. Both real pages pass True; it stays a
+               flag so a table embedded somewhere with no query string of its
+               own cannot offer links that would not work.
+  empty_title  / empty_body  what to say when there is nothing, since "no
+               accounts yet" and "nothing matches this filter" are different
+               situations.
+{% endcomment %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead>
+      <tr>
+        {% if sortable %}
+          <th colspan="2" aria-sort="{% sort_state 'name' %}">
+            <a class="th-sort" href="{% sort_link 'name' %}">Account</a>
+          </th>
+          <th aria-sort="{% sort_state 'class' %}">
+            <a class="th-sort" href="{% sort_link 'class' %}">Class</a>
+          </th>
+          <th aria-sort="{% sort_state 'license' %}">
+            <a class="th-sort" href="{% sort_link 'license' %}">License</a>
+          </th>
+          <th class="text-end" aria-sort="{% sort_state 'boq' %}">
+            <a class="th-sort" href="{% sort_link 'boq' %}">BOQ</a>
+          </th>
+          <th aria-sort="{% sort_state 'stage' %}">
+            <a class="th-sort" href="{% sort_link 'stage' %}">Stage</a>
+          </th>
+          {% if shows_health %}
+            <th aria-sort="{% sort_state 'health' %}">
+              <a class="th-sort" href="{% sort_link 'health' %}">Health</a>
+            </th>
+          {% endif %}
+          <th aria-sort="{% sort_state 'csm' %}">
+            <a class="th-sort" href="{% sort_link 'csm' %}">CSM</a>
+          </th>
+          <th aria-sort="{% sort_state 'acm' %}">
+            <a class="th-sort" href="{% sort_link 'acm' %}">ACM</a>
+          </th>
+          <th class="text-end" aria-sort="{% sort_state 'renewal' %}">
+            <a class="th-sort" href="{% sort_link 'renewal' %}">Renewal</a>
+          </th>
+          {% if row_actions %}<th class="text-end"><span class="visually-hidden">Actions</span></th>{% endif %}
+        {% else %}
+          <th colspan="2">Account</th>
+          <th>Class</th>
+          <th>License</th>
+          <th class="text-end">BOQ</th>
+          <th>Stage</th>
+          {% if shows_health %}<th>Health</th>{% endif %}
+          <th>CSM</th>
+          <th>ACM</th>
+          <th class="text-end">Renewal</th>
+          {% if row_actions %}<th class="text-end"><span class="visually-hidden">Actions</span></th>{% endif %}
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for account in accounts %}
+        {% comment %}
+        The whole row opens the account. The name is still a real link - that is
+        what a keyboard and a screen reader follow, and what a middle click
+        opens in a tab - and this only adds the rest of the row as a target for
+        a mouse. Clicks that land on another link, a button or a form are left
+        alone, so the menu and the logo still do their own jobs.
+        {% endcomment %}
+        <tr class="row-link" data-href="{% url 'accounts:detail' account.id %}">
+          <td class="pe-0" style="width: 1%;">
+            {% include "accounts/_logo.html" with account=account %}
+          </td>
+          <td>
+            {% if shows_health %}
+              {% include "health/_dot.html" with status=account.health_status %}
+            {% endif %}
+            <a href="{% url 'accounts:detail' account.id %}" class="text-decoration-none fw-medium">
+              {{ account.client_name }}
+            </a>
+            <div class="small text-body-secondary">{{ account.client_code }}</div>
+          </td>
+          <td><span class="badge text-bg-light">{{ account.account_class_label }}</span></td>
+          <td class="small">
+            {% if account.license_type %}{{ account.license_label }}
+            {% else %}<span class="text-body-secondary">&mdash;</span>{% endif %}
+          </td>
+          <td class="text-end small">
+            {% comment %}
+            The contracted seat count, with anything bought since beside it.
+            Two numbers rather than the total: the total is the one that already
+            appears everywhere else, and it cannot say which part of it was
+            signed for.
+            {% endcomment %}
+            <span class="viz-legend-value">{{ account.boq_users_count }}</span>
+            {% if account.added_users_count %}
+              <span class="text-body-secondary" title="Added since the contract">
+                +{{ account.added_users_count }}
+              </span>
+            {% endif %}
+          </td>
+          <td><span class="small">{{ account.lifecycle_stage_label }}</span></td>
+          {% if shows_health %}
+            <td>{% include "health/_status_badge.html" with presented=account %}</td>
+          {% endif %}
+          <td class="small">{{ account.csm.full_name|default:"&mdash;" }}</td>
+          <td class="small">{{ account.acm.full_name|default:"&mdash;" }}</td>
+          <td class="text-end small">
+            {{ account.contract_end_date|date:"j M Y"|default:"&mdash;" }}
+          </td>
+          {% if row_actions %}
+            <td class="text-end" style="width: 1%;">
+              {% include "accounts/_row_actions.html" with account=account next=request.get_full_path %}
+            </td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="{% if row_actions %}11{% else %}10{% endif %}">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <div class="empty-state-title">{{ empty_title|default:"No accounts yet" }}</div>
+              <div class="small">{{ empty_body|default:"" }}</div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

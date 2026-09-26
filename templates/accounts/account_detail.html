@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.client_name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ account.client_name }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div class="d-flex align-items-start gap-3">
+      {% include "accounts/_logo.html" with account=account linked=False %}
+      <div>
+      <h1 class="h3 mb-1">{{ account.client_name }}</h1>
+      <div class="text-body-secondary small">
+        {{ presented.client_code }}
+        {% if presented.country_label %} &middot; {{ presented.country_label }}{% endif %}
+        &middot; {{ presented.account_class_label }}
+        {% if presented.license_type %} &middot; {{ presented.license_label }}{% endif %}
+        &middot; {{ presented.lifecycle_stage_label }}
+        {% if presented.is_managed_service %}
+          &middot; <span class="badge text-bg-info">Managed service</span>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      {% comment %}
+      Edit and delete together, since one beside the other is what the reader
+      goes looking for - not edit tucked into the Details card while delete
+      sits alone up here.
+      {% endcomment %}
+      {% if presented.can_edit %}
+        <a class="btn btn-sm btn-outline-primary"
+           href="{% url 'accounts:edit' account.pk %}?next={{ request.path|urlencode }}">
+          <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+        </a>
+      {% endif %}
+      {% if presented.can_delete %}
+        <a class="btn btn-sm btn-outline-danger"
+           href="{% url 'accounts:delete' account.pk %}"
+           hx-get="{% url 'accounts:delete' account.pk %}"
+           hx-target="#confirm-modal .modal-content"
+           data-bs-toggle="modal" data-bs-target="#confirm-modal">
+          <i class="bi bi-trash3" aria-hidden="true"></i> Delete
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-8">
+      {% if presented.shows_health %}
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Health Score</span>
+            <div class="d-flex gap-3 align-items-center">
+              {% comment %}
+              The three things that feed this score, added from the card that
+              shows it. Each is capability-gated on its own; this whole card
+              is already hidden from an ACM, who holds none of the three and
+              never sees health at all.
+              {% endcomment %}
+              {% if "ticket.edit" in ability.capabilities or "csat.record" in ability.capabilities or "adoption.record" in ability.capabilities %}
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-primary" type="button"
+                          data-bs-toggle="dropdown" aria-expanded="false"
+                          aria-label="Record something that moves the score">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    {% if "ticket.edit" in ability.capabilities %}
+                      <li>
+                        <a class="dropdown-item"
+                           href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}">
+                          <i class="bi bi-life-preserver me-2 text-body-secondary"></i>Ticket
+                        </a>
+                      </li>
+                    {% endif %}
+                    {% if "adoption.record" in ability.capabilities %}
+                      <li>
+                        <a class="dropdown-item"
+                           href="{% url 'engagement:adoption_create' account.pk %}?next={{ request.path|urlencode }}">
+                          <i class="bi bi-graph-up-arrow me-2 text-body-secondary"></i>Adoption event
+                        </a>
+                      </li>
+                    {% endif %}
+                    {% if "csat.record" in ability.capabilities %}
+                      <li>
+                        <a class="dropdown-item"
+                           href="{% url 'engagement:csat_create' account.pk %}?next={{ request.path|urlencode }}">
+                          <i class="bi bi-emoji-smile me-2 text-body-secondary"></i>CSAT
+                        </a>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+              {% endif %}
+              {% if can_override %}
+                {% if presented.is_overridden %}
+                  <a class="btn btn-sm btn-outline-danger"
+                     href="{% url 'health:override_clear' account.pk %}">
+                    <i class="bi bi-x-circle" aria-hidden="true"></i> Clear override
+                  </a>
+                {% else %}
+                  <a class="btn btn-sm btn-outline-secondary"
+                     href="{% url 'health:override' account.pk %}">
+                    <i class="bi bi-hand-index-thumb" aria-hidden="true"></i> Override
+                  </a>
+                {% endif %}
+              {% endif %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'health:panel' account.pk %}">
+                <i class="bi bi-list-check" aria-hidden="true"></i> Health score details
+              </a>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+              {% include "health/_status_badge.html" with presented=presented %}
+              {% if presented.is_overridden %}
+                <span class="badge text-bg-warning">
+                  <i class="bi bi-hand-index-thumb"></i> Overridden
+                </span>
+              {% endif %}
+            </div>
+            {% if presented.is_overridden %}
+              <div class="mt-3">
+                {% include "health/_override_banner.html" with override=presented.health_override computed_label=presented.computed_health_status_label %}
+              </div>
+            {% endif %}
+            {% if presented.meeting_frequency_missing %}
+              <div class="alert alert-warning mt-3 mb-0 py-2 small">
+                No required meeting frequency is set, so Meeting Attendance is not
+                scored and this account is marked out of 80. The band is capped at
+                Watch while that is true &mdash; four green factors out of 80 is
+                exactly the Healthy threshold, which would otherwise read as green
+                on an account that is missing a factor.
+              </div>
+            {% endif %}
+            {% if presented.red_since %}
+              <div class="small text-danger mt-2">
+                At Risk since {{ presented.red_since|date:"j M Y" }}.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Stakeholders</span>
+          <div class="d-flex gap-2 align-items-center">
+            {% if triage_count %}
+              <span class="badge text-bg-warning">{{ triage_count }} to triage</span>
+            {% endif %}
+            {% if "contact.edit" in ability.capabilities %}
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'contacts:create' account.pk %}"
+                 title="Add a contact" aria-label="Add a contact">
+                <i class="bi bi-plus-lg"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          {% if contacts %}
+            {% include "contacts/_grid_partial.html" %}
+          {% else %}
+            <p class="text-body-secondary mb-0">
+              No contacts recorded yet.
+              {% if "contact.edit" in ability.capabilities %}
+                <a href="{% url 'contacts:create' account.pk %}">Add the first one.</a>
+              {% endif %}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card mb-4">
+        <div class="card-header">Details</div>
+        <div class="card-body">
+          <dl class="row mb-0 small">
+            <dt class="col-5">CSM</dt>
+            <dd class="col-7">{{ presented.csm.full_name|default:"Unassigned" }}</dd>
+            <dt class="col-5">ACM</dt>
+            <dd class="col-7">{{ presented.acm.full_name|default:"Unassigned" }}</dd>
+            <dt class="col-5">Partner</dt>
+            <dd class="col-7">{{ presented.partner.name|default:"&mdash;" }}</dd>
+            <dt class="col-5">License</dt>
+            <dd class="col-7">
+              {% if presented.license_type %}
+                <span class="badge text-bg-light">{{ presented.license_label }}</span>
+              {% else %}
+                <span class="text-body-secondary">Not set</span>
+              {% endif %}
+            </dd>
+            <dt class="col-5">Deployment</dt>
+            <dd class="col-7">{{ presented.deployment_label }}</dd>
+            <dt class="col-5">Size</dt>
+            <dd class="col-7">{{ presented.size_label }}</dd>
+            <dt class="col-5">BOQ users</dt>
+            <dd class="col-7">{{ presented.boq_users_count }}</dd>
+            <dt class="col-5">Added users</dt>
+            <dd class="col-7">{{ presented.added_users_count }}</dd>
+            <dt class="col-5">Total users</dt>
+            <dd class="col-7">
+              <strong>{{ presented.total_users_count }}</strong>
+              {% if presented.added_users_count %}
+                <span class="small text-body-secondary">
+                  &middot; {{ presented.added_users_count }} beyond the BOQ
+                </span>
+              {% endif %}
+            </dd>
+            <dt class="col-5">Contract</dt>
+            <dd class="col-7">
+              {{ presented.contract_start_date|date:"j M Y"|default:"&mdash;" }}
+              &ndash;
+              {{ presented.contract_end_date|date:"j M Y"|default:"&mdash;" }}
+            </dd>
+            <dt class="col-5">Renewals</dt>
+            <dd class="col-7">{{ presented.renewal_count }}</dd>
+            <dt class="col-5">Next meeting</dt>
+            <dd class="col-7">{{ presented.quarterly_meeting_date|date:"j M Y"|default:"&mdash;" }}</dd>
+          </dl>
+
+          {% if presented.tenant_url or presented.drive_url or presented.website_url or presented.linkedin_url %}
+            <hr>
+            <div class="d-flex flex-wrap gap-2">
+              {% if presented.website_url %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ presented.website_url }}"
+                   target="_blank" rel="noopener">Website</a>
+              {% endif %}
+              {% if presented.tenant_url %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ presented.tenant_url }}"
+                   target="_blank" rel="noopener">Tenant</a>
+              {% endif %}
+              {% if presented.drive_url %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ presented.drive_url }}"
+                   target="_blank" rel="noopener">Drive</a>
+              {% endif %}
+              {% if presented.linkedin_url %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ presented.linkedin_url }}"
+                   target="_blank" rel="noopener">LinkedIn</a>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% if presented.custom_fields %}
+            <hr>
+            <dl class="row mb-0 small">
+              {% for name, value in presented.custom_fields %}
+                <dt class="col-5">{{ name }}</dt>
+                <dd class="col-7">{{ value }}</dd>
+              {% endfor %}
+            </dl>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          {% comment %}
+          Events and digital content, where the activity log used to sit. The
+          log is the timeline's business - it is the same rows, plus the planned
+          work - and showing a slice of it here was a third place to read the
+          same thing.
+          {% endcomment %}
+          <span>Events</span>
+          {% if "engagement.edit" in ability.capabilities %}
+            <a class="btn btn-sm btn-outline-primary"
+               href="{% url 'engagement:item_create' account.pk %}?next={{ request.path|urlencode }}"
+               title="Add an event" aria-label="Add an event">
+              <i class="bi bi-plus-lg"></i>
+            </a>
+          {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for item in engagement_items %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between gap-2">
+                <div>
+                  <span class="badge text-bg-light">{{ item.get_item_type_display }}</span>
+                  {% if item.title %}<strong>{{ item.title }}</strong>{% endif %}
+                  {% if item.location %}
+                    <div class="small text-body-secondary">{{ item.location }}</div>
+                  {% endif %}
+                </div>
+                <div class="text-end flex-shrink-0 small">
+                  {{ item.occurred_on|date:"j M Y" }}
+                </div>
+              </div>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              Nothing recorded. These drive the twelve-month trend on the
+              dashboard; they do not feed the health score.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Open activities</span>
+          <div class="d-flex gap-3 align-items-center">
+            <a class="small" href="{% url 'activities:timeline' account.pk %}">Timeline</a>
+            {% if "task.create" in ability.capabilities %}
+              {% comment %}
+              A plus that asks which kind rather than assuming a next action:
+              the three are equally likely, and guessing wrong costs a page
+              load and a re-choice.
+              {% endcomment %}
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-primary" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        aria-label="Add an activity">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% for value, label, icon in add_kinds %}
+                    <li>
+                      <a class="dropdown-item"
+                         href="{% url 'tasks:create' account.pk %}?task_type={{ value }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for task in tasks %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <div>{{ task.title }}</div>
+                  <div class="small {% if task.is_overdue_now %}text-danger{% else %}text-body-secondary{% endif %}">
+                    {{ task.get_task_type_display }} &middot; due {{ task.due_display }}
+                    {% if task.is_overdue_now %}&middot; overdue{% endif %}
+                  </div>
+                </div>
+                {% comment %}
+                The same three icons as every other list: a tick, a pencil and
+                a bin, with the bin asking first unless the reader has said not
+                to be asked again today.
+                {% endcomment %}
+                {% include "tasks/_row_buttons.html" with task=task next=request.path %}
+              </div>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">Nothing open.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+  </div>
+{% endblock %}

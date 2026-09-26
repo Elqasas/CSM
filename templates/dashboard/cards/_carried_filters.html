@@ -1,0 +1,17 @@
+{% comment %}
+Everything a card's own form has to resubmit, as hidden inputs.
+
+A card with a selector of its own - the renewals list's quarter, the renewal
+chart's year - submits a fresh GET, and anything absent from that form is
+dropped. Listing the parameters by hand is how that goes wrong: a filter added
+later is silently discarded by every card form written before it, and one card's
+control resets the other's.
+
+Expects `owns`: the names this form has real inputs for, so they are not
+submitted twice.
+{% endcomment %}
+{% for carried in carried_params %}
+  {% if carried.param not in owns %}
+    <input type="hidden" name="{{ carried.param }}" value="{{ carried.value }}">
+  {% endif %}
+{% endfor %}

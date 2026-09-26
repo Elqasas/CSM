@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Notifications</h1>
+      <p class="text-body-secondary small mb-0">
+        Only yours. A senior CSM can act on every account but is notified on
+        their own.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary"
+         href="?{% if showing_all %}{% else %}show=all{% endif %}">
+        {% if showing_all %}Unread only{% else %}Show all{% endif %}
+      </a>
+      {% if unread_count %}
+        <form method="post" action="{% url 'notifications:read_all' %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-primary" type="submit">
+            Mark all read
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <ul class="list-group list-group-flush">
+      {% for note in notifications %}
+        <li class="list-group-item {% if not note.read_at %}bg-body-tertiary{% endif %}">
+          <div class="d-flex justify-content-between align-items-start gap-3">
+            <div class="min-width-0">
+              <div class="d-flex align-items-center gap-2">
+                {% if not note.read_at %}
+                  <span class="badge text-bg-primary">New</span>
+                {% endif %}
+                <strong>{{ note.title }}</strong>
+              </div>
+              {% if note.body %}
+                <div class="small text-body-secondary mt-1">{{ note.body }}</div>
+              {% endif %}
+              <div class="small text-body-secondary mt-1">
+                {{ note.created_at|date:"j M Y H:i" }}
+                {% if note.account %}
+                  &middot; {{ note.account.client_name }}
+                {% endif %}
+              </div>
+            </div>
+            <form method="post" action="{% url 'notifications:read' note.pk %}"
+                  class="flex-shrink-0">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-secondary" type="submit">
+                {% if note.read_at %}Open{% else %}Read{% endif %}
+              </button>
+            </form>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-group-item text-body-secondary py-4 text-center">
+          {% if showing_all %}
+            Nothing here yet.
+          {% else %}
+            Nothing unread. <a href="?show=all">See everything</a>.
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

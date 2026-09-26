@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Tasks</h1>
+    {% if "task.create" in ability.capabilities %}
+      <a class="btn btn-sm btn-primary" href="{% url 'tasks:create_anywhere' %}">New task</a>
+    {% endif %}
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-auto">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Scope">
+        <a class="btn btn-outline-secondary {% if scope == 'mine' %}active{% endif %}"
+           href="?scope=mine&state={{ state }}">Mine ({{ counts.mine }})</a>
+        <a class="btn btn-outline-secondary {% if scope == 'all' %}active{% endif %}"
+           href="?scope=all&state={{ state }}">All</a>
+        <a class="btn btn-outline-secondary {% if scope == 'unassigned' %}active{% endif %}"
+           href="?scope=unassigned&state={{ state }}">Unassigned ({{ counts.unassigned }})</a>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-group btn-group-sm" role="group" aria-label="State">
+        <a class="btn btn-outline-secondary {% if state == 'open' %}active{% endif %}"
+           href="?scope={{ scope }}&state=open">Open</a>
+        <a class="btn btn-outline-secondary {% if state == 'overdue' %}active{% endif %}"
+           href="?scope={{ scope }}&state=overdue">Overdue ({{ counts.overdue }})</a>
+        <a class="btn btn-outline-secondary {% if state == 'done' %}active{% endif %}"
+           href="?scope={{ scope }}&state=done">Done</a>
+      </div>
+    </div>
+    <div class="col-auto">
+      <form method="get" class="d-flex gap-2">
+        <input type="hidden" name="scope" value="{{ scope }}">
+        <input type="hidden" name="state" value="{{ state }}">
+        <select class="form-select form-select-sm" name="type" onchange="this.form.submit()">
+          <option value="">Any type</option>
+          {% for value, label in task_types %}
+            <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Task</th><th>Account</th><th>Type</th><th>Priority</th>
+            <th>Status</th><th>Due</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+            <tr>
+              <td>
+                <div>{{ task.title }}</div>
+                {% if task.contact %}
+                  <div class="small text-body-secondary">{{ task.contact.full_name }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'accounts:detail' task.account_id %}" class="text-decoration-none">
+                  {{ task.account.client_name }}
+                </a>
+              </td>
+              <td>
+                <span class="badge text-bg-light">{{ task.get_task_type_display }}</span>
+                {% if task.series_id %}
+                  <span class="badge text-bg-light" title="{{ task.series.summary }}">
+                    <i class="bi bi-arrow-repeat"></i>
+                  </span>
+                {% endif %}
+              </td>
+              <td>{% include "tasks/_priority.html" %}</td>
+              <td>{% include "tasks/_status.html" %}</td>
+              <td>
+                {% comment %}
+                One definition of overdue, on the model. Comparing the date here
+                made a task set for 09:00 read as fine at six in the evening,
+                while the Overdue counter above counted it - the page
+                contradicted itself.
+                {% endcomment %}
+                <span class="{% if task.is_overdue_now %}text-danger fw-semibold{% endif %}">
+                  {{ task.due_display }}
+                </span>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-1">
+                  {% if task.status == "PENDING" and "task.complete" in ability.capabilities %}
+                    <form method="post" action="{% url 'tasks:complete' task.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button class="btn btn-sm btn-outline-success" type="submit">Done</button>
+                    </form>
+                  {% endif %}
+                  {% if task.status == "PENDING" and "task.edit" in ability.capabilities %}
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="{% url 'tasks:edit' task.pk %}">Edit</a>
+                  {% endif %}
+                  {% if task.status == "PENDING" and "task.delete" in ability.capabilities %}
+                    <form method="post" action="{% url 'tasks:delete' task.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button class="btn btn-sm btn-outline-danger" type="submit"
+                              title="{% if task.is_system_generated %}Cancel (generated tasks are kept){% else %}Delete{% endif %}">
+                        &times;
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="text-body-secondary py-4 text-center">Nothing here.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

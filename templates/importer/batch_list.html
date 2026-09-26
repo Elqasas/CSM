@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Import{% endblock %}
+
+{% block content %}
+  <h1 class="h4 mb-1">Import accounts</h1>
+  <p class="text-body-secondary small">
+    Excel is the initial seed only. After the first upload, accounts are
+    maintained from inside the platform.
+  </p>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <form method="post" action="{% url 'importer:upload' %}"
+                enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            <fieldset class="mb-3">
+              <legend class="form-label fs-6">{{ form.kind.label }}</legend>
+              {% for choice in form.kind %}
+                <div class="form-check">
+                  {{ choice.tag }}
+                  <label class="form-check-label" for="{{ choice.id_for_label }}">
+                    {{ choice.choice_label }}
+                  </label>
+                </div>
+              {% endfor %}
+              <div class="form-text">
+                Both files have a client code column, so the importer asks rather
+                than guessing which table to write.
+              </div>
+              {% for error in form.kind.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </fieldset>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.upload.id_for_label }}">
+                {{ form.upload.label }}
+              </label>
+              {{ form.upload }}
+              <div class="form-text">{{ form.upload.help_text }}</div>
+              {% for error in form.upload.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Upload and check</button>
+          </form>
+
+          <hr>
+
+          <div class="small">
+            <div class="fw-semibold mb-2">Templates</div>
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{% url 'importer:template_for' 'accounts' 'csv' %}">Accounts .csv</a>
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{% url 'importer:template_for' 'accounts' 'xlsx' %}">Accounts .xlsx</a>
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{% url 'importer:template_for' 'contacts' 'csv' %}">Contacts .csv</a>
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{% url 'importer:template_for' 'contacts' 'xlsx' %}">Contacts .xlsx</a>
+            </div>
+          </div>
+
+          <p class="small text-body-secondary mt-3 mb-0">
+            Import accounts first: a contacts file matches on client code and
+            never creates an account. Nothing is written until you review what
+            the file contains and confirm it on the next screen.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <div class="card">
+        <div class="card-header">Previous imports</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr><th>File</th><th>Kind</th><th>Uploaded</th><th>By</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for batch in batches %}
+                <tr>
+                  <td class="small">{{ batch.original_name|default:"(unnamed)" }}</td>
+                  <td class="small">{{ batch.get_kind_display }}</td>
+                  <td class="small">{{ batch.created_at|date:"j M Y H:i" }}</td>
+                  <td class="small">{{ batch.uploaded_by.full_name }}</td>
+                  <td>
+                    {% if batch.can_apply %}
+                      {% comment %}
+                      "Validated" is the truth and reads as success. A batch
+                      sitting here validated is a sheet somebody uploaded and
+                      never finished, which is worth saying in those words.
+                      {% endcomment %}
+                      <span class="badge text-bg-warning">Not imported</span>
+                    {% else %}
+                      <span class="badge
+                        {% if batch.status == 'APPLIED' %}text-bg-success
+                        {% elif batch.status == 'FAILED' %}text-bg-danger
+                        {% else %}text-bg-secondary{% endif %}">
+                        {{ batch.get_status_display }}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a class="small" href="{% url 'importer:preview' batch.pk %}">
+                      {% if batch.can_apply %}Finish import{% else %}Open{% endif %}
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6" class="text-body-secondary py-3">Nothing imported yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

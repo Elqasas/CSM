@@ -1,0 +1,13 @@
+{% comment %}
+The accounts behind every other number on the page, shown exactly as the account
+list shows them - same partial, so the two cannot describe the same accounts
+differently.
+{% endcomment %}
+{% include "accounts/_table.html" with accounts=card.data.accounts shows_health=card.data.shows_health sortable=True empty_title="No accounts match this filter" empty_body="Clear it above to see the whole portfolio." %}
+
+{% if card.data.total > card.data.shown %}
+  <p class="small text-body-secondary mt-2 mb-0">
+    Showing {{ card.data.shown }} of {{ card.data.total }}.
+    <a href="{% url 'accounts:list' %}">The account list</a> pages through them all.
+  </p>
+{% endif %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar settings{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'schedule:calendar' %}">Calendar</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Settings</li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <h1 class="h4 mb-1">Calendar settings</h1>
+      <p class="text-body-secondary small">
+        {% comment %}
+        Preferences, not permissions. Nothing here changes what anybody may
+        see - row scope and capability are decided in one place and it is not
+        this one - only how the days are laid out for you.
+        {% endcomment %}
+        Yours alone. These change how your calendar is drawn, never what is on
+        it.
+      </p>
+
+      <div class="card">
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+
+            {% for field in form %}
+              <div class="mb-3">
+                {% if field.field.widget.input_type == "checkbox" %}
+                  <div class="form-check form-switch">
+                    {{ field }}
+                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                      {{ field.label }}
+                    </label>
+                  </div>
+                {% else %}
+                  <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                  </label>
+                  {{ field }}
+                {% endif %}
+                {% if field.help_text %}
+                  <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <a class="btn btn-outline-secondary" href="{% url 'schedule:calendar' %}">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

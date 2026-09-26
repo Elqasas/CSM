@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'activities:list' %}">Activities</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">{{ task.get_task_type_display }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div class="min-width-0">
+      <h1 class="h4 mb-2">{{ task.title }}</h1>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge text-bg-light">{{ task.get_task_type_display }}</span>
+        {% include "tasks/_priority.html" with task=task %}
+        {% include "tasks/_status.html" with task=task %}
+        {% if task.series_id %}
+          <span class="badge text-bg-light" title="{{ task.series.summary }}">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            {{ task.series.get_frequency_display }}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      {% if task.status == "PENDING" and "task.complete" in ability.capabilities %}
+        <form method="post" action="{% url 'tasks:complete' task.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="btn btn-sm btn-success" type="submit">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> Done
+          </button>
+        </form>
+      {% endif %}
+      {% if "task.edit" in ability.capabilities %}
+        <a class="btn btn-sm btn-outline-primary"
+           href="{% url 'tasks:edit' task.pk %}?next={{ request.path|urlencode }}">
+          <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+        </a>
+      {% endif %}
+      {% if task.status == "PENDING" and "task.delete" in ability.capabilities %}
+        {% include "tasks/_delete_button.html" with task=task next=next|default:request.path style="btn btn-sm btn-outline-danger" label=True %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-7">
+      <div class="card mb-4">
+        <div class="card-header">Details</div>
+        <div class="card-body">
+          <dl class="row small mb-0">
+            <dt class="col-4">Due</dt>
+            <dd class="col-8 {% if task.is_overdue_now %}text-danger fw-semibold{% endif %}">
+              {{ task.due_display }}
+              {% if task.is_overdue_now %}
+                {% comment %}
+                Said here rather than shown as a status: overdue is a fact about
+                the clock, not a state anybody set.
+                {% endcomment %}
+                &middot; overdue
+              {% endif %}
+            </dd>
+            <dt class="col-4">Account</dt>
+            <dd class="col-8">
+              <a class="text-decoration-none" href="{% url 'accounts:detail' account.pk %}">
+                {{ account.client_name }}
+              </a>
+            </dd>
+            <dt class="col-4">Contact</dt>
+            <dd class="col-8">
+              {% if task.contact %}
+                <a class="text-decoration-none"
+                   href="{% url 'contacts:detail' task.contact_id %}">
+                  {{ task.contact.full_name }}
+                </a>
+              {% else %}<span class="text-body-secondary">&mdash;</span>{% endif %}
+            </dd>
+            <dt class="col-4">Category</dt>
+            <dd class="col-8">
+              {{ task.get_category_display }}
+              {% if task.category != "CLIENT_FACING" %}
+                <span class="text-body-secondary">
+                  &middot; completing this records a note, not client contact
+                </span>
+              {% endif %}
+            </dd>
+            <dt class="col-4">Assigned to</dt>
+            <dd class="col-8">
+              {% for user in assignees %}
+                {{ user.full_name }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                <span class="text-body-secondary">Nobody</span>
+              {% endfor %}
+            </dd>
+            <dt class="col-4">Raised</dt>
+            <dd class="col-8">
+              {{ task.created_at|date:"j M Y" }}
+              {% if task.created_by %}by {{ task.created_by.full_name }}{% endif %}
+              {% if task.is_system_generated %}
+                <span class="text-body-secondary">&middot; generated</span>
+              {% endif %}
+            </dd>
+            {% if task.completed_at %}
+              <dt class="col-4">Completed</dt>
+              <dd class="col-8">
+                {{ task.completed_at|date:"j M Y H:i" }}
+                {% if task.completed_by %}by {{ task.completed_by.full_name }}{% endif %}
+              </dd>
+            {% endif %}
+          </dl>
+
+          {% if task.description %}
+            <hr>
+            <div class="small">{{ task.description|linebreaksbr }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      {% if task.series_id %}
+        <div class="card mb-4">
+          <div class="card-header">Repeats</div>
+          <div class="card-body small">
+            <p class="mb-2">{{ task.series.summary }}.</p>
+            <p class="text-body-secondary mb-0">
+              {% comment %}
+              Said plainly because it is the thing people are surprised by: the
+              next one does not exist yet, so the queue shows what is actually
+              to be done rather than a year of copies.
+              {% endcomment %}
+              One at a time &mdash; the next is raised when this one is done.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if logged %}
+        <div class="card">
+          <div class="card-header">What it recorded</div>
+          <div class="card-body small">
+            <p class="mb-1">
+              <span class="badge text-bg-success-subtle text-success-emphasis">Happened</span>
+              {{ logged.get_activity_type_display }} on {{ logged.occurred_on|date:"j M Y" }}
+            </p>
+            <p class="text-body-secondary mb-0">
+              Completing it wrote this to the account's log, which is what the
+              health score reads.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

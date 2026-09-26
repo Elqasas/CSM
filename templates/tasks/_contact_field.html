@@ -1,0 +1,12 @@
+{% comment %}
+The contact field of a task form, on its own so the page and the HTMX fragment
+that replaces it after an account is chosen are the same markup. Expects
+`field` - the bound form field, not a queryset, so the options and the empty
+label are the form's own.
+{% endcomment %}
+<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+{{ field }}
+{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+{% for error in field.errors %}
+  <div class="text-danger small">{{ error }}</div>
+{% endfor %}

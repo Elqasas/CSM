@@ -1,0 +1,31 @@
+{% comment %}
+One field as a row of choices rather than a dropdown. Expects `field`.
+
+A closed list of three or four reads better in the open: a dropdown hides every
+option but one behind a click, which is the wrong trade when the whole list fits
+on a line and the reader is choosing between them.
+
+Bootstrap's btn-check: the radio itself is visually hidden and its label is the
+button, so it stays a real radio group - keyboard, screen readers and the form
+post all behave exactly as they would with a dropdown.
+{% endcomment %}
+{% comment %}
+A span, not a label: a radio group has no single input to point at, and a
+`for` attribute naming nothing is worse than no label element - it tells a
+screen reader there is a target and then has none. The group carries the name
+through aria-labelledby instead.
+{% endcomment %}
+<span class="form-label d-block" id="lbl-{{ field.name }}">{{ field.label }}</span>
+<div class="btn-group btn-group-sm seg-group" role="group"
+     aria-labelledby="lbl-{{ field.name }}">
+  {% for choice in field %}
+    {{ choice.tag }}
+    <label class="btn btn-outline-secondary" for="{{ choice.id_for_label }}">
+      {{ choice.choice_label }}
+    </label>
+  {% endfor %}
+</div>
+{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+{% for error in field.errors %}
+  <div class="text-danger small">{{ error }}</div>
+{% endfor %}

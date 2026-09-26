@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Clock and region{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <h1 class="h4 mb-1">Clock and region</h1>
+      <p class="text-body-secondary small">
+        Yours alone, and only for the clock on your dashboard.
+      </p>
+
+      <div class="alert alert-secondary small">
+        {% comment %}
+        Said plainly and near the control, because it is the thing somebody
+        would otherwise assume the opposite of. A per-person timezone that
+        reached the scoring engine would let two people disagree about whether
+        an account had gone a week without contact.
+        {% endcomment %}
+        <strong>This does not move any deadline.</strong> Due dates, the health
+        factors' day counts, the generated reminders and the 07:00 digest are
+        all counted in <strong>{{ business_timezone }}</strong>, whatever you
+        choose here. A task due today is due on that day for everybody.
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+
+            {% for field in form %}
+              <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">
+                  {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                  <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <a class="btn btn-outline-secondary" href="{% url 'dashboard:index' %}">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% load query %}
+{% comment %}
+A single figure is not a chart. A number that answers one question reads faster
+as a number than as a bar of length one.
+
+A stat that names a filter is also a control - Managed service is the one that
+does - so the figure itself narrows the page to what it counts, and narrows it
+back on a second click.
+{% endcomment %}
+{% toggle_filter card.data.filter_param card.data.filter_value as href %}
+{% is_filtered_on card.data.filter_param card.data.filter_value as selected %}
+{% if href %}
+  <a class="stat-link{% if selected %} is-selected{% endif %}" href="{{ href }}">
+    <span class="stat-value">{{ card.data.value }}</span>
+    <span class="small text-body-secondary d-block">{{ card.data.caption }}</span>
+    <span class="small">
+      {% if selected %}
+        <i class="bi bi-x-circle-fill" aria-hidden="true"></i> Filtering the page
+      {% else %}
+        <i class="bi bi-funnel" aria-hidden="true"></i> Filter the page
+      {% endif %}
+    </span>
+  </a>
+{% else %}
+  <div class="stat-value">{{ card.data.value }}</div>
+  <div class="small text-body-secondary">{{ card.data.caption }}</div>
+{% endif %}
+{% if card.data.breakdown %}
+  <ul class="list-unstyled small mt-2 mb-0">
+    {% for label, count in card.data.breakdown %}
+      <li class="d-flex justify-content-between border-top py-1">
+        <span>{{ label }}</span>
+        <span class="viz-legend-value">{{ count }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

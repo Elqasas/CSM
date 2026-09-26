@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ task.title }}{% endblock %}
+
+{% block content %}
+  {% comment %}
+  The same confirmation the dialog shows, as a page, for a browser that never
+  loaded HTMX. One view serves both, so they cannot drift.
+  {% endcomment %}
+  <div class="row">
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        {% include "tasks/_delete_confirm.html" %}
+      </div>
+      <a class="btn btn-link mt-2" href="{{ next|default:'/activities/' }}">Back</a>
+    </div>
+  </div>
+{% endblock %}

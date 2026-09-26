@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.client_name }} &middot; Events{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Events</li>
+    </ol>
+  </nav>
+
+  <h1 class="h4 mb-1">Events</h1>
+  <p class="text-body-secondary small mb-4">
+    {% comment %}
+    The distinction worth keeping: these drive the dashboard's trend over time
+    and nothing else. Tickets, CSAT and adoption - the three the engine reads -
+    sit on the health page, beside the factors they move.
+    {% endcomment %}
+    Events and digital content, for the twelve-month trend. These do not feed
+    the health score; the things that do are on the
+    <a href="{% url 'health:panel' account.pk %}">health page</a>.
+  </p>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Events and digital content</span>
+          {% if "engagement.edit" in ability.capabilities %}
+            <a class="small" href="{% url 'engagement:item_create' account.pk %}">Add</a>
+          {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for item in items %}
+            <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <span class="badge text-bg-light">{{ item.get_item_type_display }}</span>
+                {{ item.title|default:"" }}
+                <div class="small text-body-secondary">
+                  {{ item.occurred_on|date:"j M Y" }}
+                  {% if item.location %} &middot; {{ item.location }}{% endif %}
+                </div>
+              </div>
+              {% if "engagement.edit" in ability.capabilities %}
+                <form method="post" action="{% url 'engagement:delete' account.pk 'item' item.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="list-group-item text-body-secondary">
+              Nothing recorded. These drive the dashboard trend, not the score.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

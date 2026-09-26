@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+  {% comment %}
+  A fixed, full-viewport canvas behind the sign-in card. z-index 0 rather than
+  a negative one: a negative z-index can end up behind the page's own opaque
+  background depending on the stacking context, which is a fragile way to
+  guarantee "behind everything but visible". Giving the card its own stacking
+  context at z-index 1 is the reliable version of the same idea.
+  {% endcomment %}
+  <div id="particles-js" class="login-particles" aria-hidden="true"></div>
+
+  <div class="row justify-content-center position-relative" style="z-index: 1;">
+    <div class="col-12 col-sm-9 col-md-6 col-lg-4">
+      <div class="card shadow-sm mt-5 login-card">
+        <div class="card-body p-4">
+          <h1 class="h4 mb-1">Customer Health</h1>
+          <p class="text-body-secondary small mb-4">dPhish internal platform</p>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2">
+              {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.username.id_for_label }}">Email</label>
+              <input type="email" name="{{ form.username.html_name }}" autofocus required
+                     autocomplete="username"
+                     class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                     id="{{ form.username.id_for_label }}"
+                     value="{{ form.username.value|default:'' }}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+              <input type="password" name="{{ form.password.html_name }}" required
+                     autocomplete="current-password"
+                     class="form-control {% if form.password.errors %}is-invalid{% endif %}"
+                     id="{{ form.password.id_for_label }}">
+            </div>
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .login-particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      /* A flat body-background colour is what made the first version of this
+         read as barely-there: pale dots on a plain page have nothing to
+         contrast against. A soft corner-to-corner brand tint gives the same
+         dots somewhere to stand out, in both themes. */
+      background: radial-gradient(circle at 15% 15%, var(--brand-100), transparent 55%),
+                  radial-gradient(circle at 85% 85%, var(--brand-100), transparent 55%),
+                  var(--bs-body-bg);
+    }
+    /* A solid card over a moving background needs to read as clearly as it
+       does over a plain one, so it keeps its normal opaque surface rather
+       than the reference site's frosted-glass look. */
+    .login-card { position: relative; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script>
+    (function () {
+      // Read the brand colour the rest of the app already uses, so the
+      // background matches the theme (light or dark) instead of hard-coding
+      // a colour that would clash with one of them.
+      var brand = getComputedStyle(document.documentElement)
+        .getPropertyValue("--brand-600").trim() || "#4f46e5";
+
+      if (typeof particlesJS === "undefined") return;
+      particlesJS("particles-js", {
+        particles: {
+          number: { value: 110, density: { enable: true, value_area: 800 } },
+          color: { value: brand },
+          shape: { type: "circle" },
+          // Brighter and bigger than a first pass: 0.35 opacity on a mostly
+          // flat backdrop read as barely visible, especially in light mode.
+          opacity: { value: 0.65, random: true, anim: { enable: true, speed: 0.4, opacity_min: 0.3 } },
+          size: { value: 3.5, random: true },
+          line_linked: {
+            enable: true, distance: 150, color: brand, opacity: 0.45, width: 1.2,
+          },
+          move: { enable: true, speed: 1.4, out_mode: "out" },
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: { enable: true, mode: "grab" },
+            onclick: { enable: true, mode: "push" },
+            resize: true,
+          },
+          modes: {
+            grab: { distance: 160, line_linked: { opacity: 0.7 } },
+            push: { particles_nb: 4 },
+          },
+        },
+        retina_detect: true,
+      });
+    })();
+  </script>
+{% endblock %}

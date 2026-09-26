@@ -1,0 +1,36 @@
+{% comment %}
+Card 4 carries its own quarter selector, independent of the page filter, per the
+specification. It submits the page filter alongside so switching quarter does
+not silently discard the country and class the reader chose.
+{% endcomment %}
+<form method="get" class="d-flex gap-2 mb-3">
+  {% include "dashboard/cards/_carried_filters.html" with owns="quarter quarter_year" %}
+
+  <select class="form-select form-select-sm" name="quarter" aria-label="Quarter">
+    {% for q in card.data.quarter_choices %}
+      <option value="{{ q }}" {% if card.data.quarter == q %}selected{% endif %}>Q{{ q }}</option>
+    {% endfor %}
+  </select>
+  <select class="form-select form-select-sm" name="quarter_year" aria-label="Year">
+    {% for y in card.data.year_choices %}
+      <option value="{{ y }}" {% if card.data.quarter_year == y %}selected{% endif %}>{{ y }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-sm btn-outline-secondary" type="submit">Go</button>
+</form>
+
+<div class="stat-value">{{ card.data.value }}</div>
+<div class="small text-body-secondary mb-2">{{ card.data.caption }}</div>
+
+<ul class="list-unstyled small mb-0">
+  {% for account in card.data.accounts %}
+    <li class="d-flex justify-content-between border-top py-1">
+      <a href="{% url 'accounts:detail' account.pk %}" class="text-decoration-none">
+        {{ account.client_name }}
+      </a>
+      <span class="viz-legend-value">{{ account.contract_end_date|date:"j M" }}</span>
+    </li>
+  {% empty %}
+    <li class="text-body-secondary py-1">Nothing renewing in this quarter.</li>
+  {% endfor %}
+</ul>

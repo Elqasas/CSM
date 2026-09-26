@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load schedule %}
+
+{% block title %}Calendar{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-0">Calendar</h1>
+      <p class="text-body-secondary small mb-0">
+        {% comment %}
+        The load, not another list. A repeating meeting keeps one live task at a
+        time, so the calendar draws the days it *will* fall on as outlines - a
+        forecast that looks identical to a commitment is a lie about the week.
+        {% endcomment %}
+        What is planned and what happened, by day. Outlined entries are repeats
+        that have not been raised yet.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% include "activities/_add.html" %}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'schedule:settings' %}"
+         aria-label="Calendar settings">
+        <i class="bi bi-sliders"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="card card-body py-2 mb-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Range">
+        {% for value, label in modes %}
+          <a class="btn btn-outline-secondary {% if mode == value %}active{% endif %}"
+             href="?view={{ value }}&amp;date={{ focus|date:'Y-m-d' }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+
+      <div class="btn-group btn-group-sm" role="group" aria-label="Move">
+        <a class="btn btn-outline-secondary"
+           href="?view={{ mode }}&amp;date={{ prev|date:'Y-m-d' }}" aria-label="Previous">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+        <a class="btn btn-outline-secondary" href="?view={{ mode }}">Today</a>
+        <a class="btn btn-outline-secondary"
+           href="?view={{ mode }}&amp;date={{ next|date:'Y-m-d' }}" aria-label="Next">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </div>
+
+      <strong class="ms-1">
+        {% if mode == "day" %}{{ focus|date:"l j F Y" }}
+        {% elif mode == "week" %}Week of {{ focus|date:"j F Y" }}
+        {% else %}{{ focus|date:"F Y" }}{% endif %}
+      </strong>
+
+      <span class="small text-body-secondary ms-auto">
+        {{ load }} item{{ load|pluralize }} planned in this range
+      </span>
+    </div>
+  </div>
+
+  {% if mode == "month" %}
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-bordered cal-month mb-0">
+          <thead>
+            {% comment %}
+            Headings in the reader's own order. Hard-coded "Mon Tue Wed" was
+            wrong the moment the week could start anywhere, and a heading that
+            disagrees with the column under it is worse than none.
+            {% endcomment %}
+            <tr>
+              {% for heading in headings %}<th>{{ heading }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in weeks %}
+              <tr>
+                {% for day in week %}
+                  <td class="{% if not day.in_month %}cal-outside{% endif %}
+                             {% if day.date.weekday in weekend %}cal-weekend{% endif %}
+                             {% if day.date == today %}cal-today{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <a class="cal-daynum" href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}">
+                        {{ day.date|date:"j" }}
+                      </a>
+                    </div>
+                    {% with bucket=by_day|dictkey:day.date %}
+                      {% include "schedule/_day_entries.html" with bucket=bucket limit=":3" %}
+                      {% if bucket %}
+                        {% with extra=bucket|entry_overflow:3 %}
+                          {% if extra %}
+                            <a class="small text-body-secondary"
+                               href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}">
+                              +{{ extra }} more
+                            </a>
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="row g-3">
+      {% for day in days %}
+        <div class="{% if mode == 'day' %}col-12{% else %}col-12 col-lg{% endif %}">
+          <div class="card h-100 {% if day == today %}cal-today{% endif %}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>{{ day|date:"D j M" }}</span>
+              {% if day == today %}<span class="badge text-bg-primary">Today</span>{% endif %}
+            </div>
+            <div class="card-body">
+              {% with bucket=by_day|dictkey:day %}
+                {% include "schedule/_day_entries.html" with bucket=bucket limit="" %}
+                {% if not bucket %}
+                  <p class="small text-body-secondary mb-0">Nothing.</p>
+                {% endif %}
+              {% endwith %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

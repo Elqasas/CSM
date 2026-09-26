@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Clear override &middot; {{ account.client_name }}{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-12 col-lg-6">
+      <h1 class="h4 mb-3">Clear the override?</h1>
+
+      {% if override %}
+        <div class="card mb-3">
+          <div class="card-body">
+            <div><strong>{{ override.get_status_display }}</strong></div>
+            <p class="small mb-1">{{ override.reason }}</p>
+            <p class="small text-body-secondary mb-0">
+              Set {{ override.created_at|date:"j M Y" }} by
+              {{ override.created_by.full_name|default:"a system user" }}.
+            </p>
+          </div>
+        </div>
+        <p class="text-body-secondary">
+          The computed status applies again immediately. The override is kept in
+          history, not deleted.
+        </p>
+        <form method="post" class="d-flex gap-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Clear override</button>
+          <a class="btn btn-outline-secondary" href="{% url 'health:panel' account.pk %}">Cancel</a>
+        </form>
+      {% else %}
+        <p class="text-body-secondary">There is no active override on this account.</p>
+        <a class="btn btn-outline-secondary" href="{% url 'health:panel' account.pk %}">Back</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

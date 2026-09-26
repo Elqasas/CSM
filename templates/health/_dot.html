@@ -1,0 +1,13 @@
+{% comment %}
+A bare status dot for use before an account name. Expects `status` - the raw
+effective_health_status - and is only ever included inside a block already
+gated on health.view, so it carries no gating of its own.
+
+Colour alone is never the whole story, which is why it takes a title and sits
+beside the name rather than replacing it.
+{% endcomment %}
+<span class="health-dot align-middle
+  {% if status == 'HEALTHY' %}is-healthy
+  {% elif status == 'WATCH' %}is-watch
+  {% elif status == 'AT_RISK' %}is-at-risk{% endif %}"
+  title="{% if status == 'HEALTHY' %}Healthy{% elif status == 'WATCH' %}Watch{% elif status == 'AT_RISK' %}At Risk{% else %}Not scored{% endif %}"></span>

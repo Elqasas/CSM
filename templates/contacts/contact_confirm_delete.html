@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ contact.full_name }}{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-12 col-lg-6">
+      <h1 class="h4 mb-3">Delete {{ contact.full_name }}?</h1>
+
+      <div class="alert alert-danger">
+        <strong>This removes the contact entirely. It cannot be undone.</strong>
+        <p class="small mb-0 mt-1">
+          Any activity, task or CSAT response that named them keeps its own
+          record; it just no longer names anyone.
+        </p>
+      </div>
+
+      <dl class="row small">
+        <dt class="col-5">Account</dt><dd class="col-7">{{ contact.account.client_name }}</dd>
+        <dt class="col-5">Title</dt><dd class="col-7">{{ contact.title|default:"&mdash;" }}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <button type="submit" class="btn btn-danger">Delete contact</button>
+        <a class="btn btn-outline-secondary"
+           href="{% if next %}{{ next }}{% else %}{% url 'accounts:detail' contact.account_id %}{% endif %}">
+          Cancel
+        </a>
+      </form>
+    </div>
+  </div>
+{% endblock %}

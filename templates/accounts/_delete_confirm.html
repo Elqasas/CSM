@@ -1,0 +1,36 @@
+{% comment %}
+The delete confirmation, as the inside of a dialog.
+
+Served to HTMX from the same view that serves the full page, so the two cannot
+say different things about what a deletion does - and what it says is the part
+that matters: the account is hidden, its history is kept, and the counts below
+are what is being hidden with it.
+{% endcomment %}
+<div class="modal-header">
+  <h5 class="modal-title">Delete {{ account.client_name }}?</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+  <div class="alert alert-warning">
+    <strong>This hides the account everywhere in the platform.</strong>
+    <p class="small mb-0 mt-1">
+      Its contacts, activity log, tasks and score history are kept rather than
+      cascaded away, so the deletion can be undone. Nothing is permanently
+      destroyed here.
+    </p>
+  </div>
+  <dl class="row small mb-0">
+    <dt class="col-5">Code</dt><dd class="col-7">{{ account.client_code }}</dd>
+    <dt class="col-5">Contacts</dt><dd class="col-7">{{ account.contacts.count }}</dd>
+    <dt class="col-5">Activities</dt><dd class="col-7">{{ account.activities.count }}</dd>
+    <dt class="col-5">Tasks</dt><dd class="col-7">{{ account.tasks.count }}</dd>
+  </dl>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+  <form method="post" action="{% url 'accounts:delete' account.pk %}">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button type="submit" class="btn btn-danger">Delete account</button>
+  </form>
+</div>

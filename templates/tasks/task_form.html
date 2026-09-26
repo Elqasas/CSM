@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}New{% endif %} {{ kind_label|lower }} &middot; {{ account.client_name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      {% if account %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+        </li>
+      {% endif %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {% if is_edit %}Edit{% else %}New{% endif %} {{ kind_label|lower }}
+      </li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-12 col-lg-7 col-xl-6">
+      {% comment %}
+      Named after what is being made. "New task" on a page that is making a call
+      reads as though the kind field were decoration.
+      {% endcomment %}
+      <h1 class="h4 mb-1">{% if is_edit %}Edit{% else %}New{% endif %} {{ kind_label|lower }}</h1>
+      <p class="text-body-secondary small">
+        {% if is_edit %}
+          {% if task.is_system_generated %}
+            This task was generated. Editing it is fine and the change sticks:
+            the generator identifies it by the account and the date it derives
+            from, not by its title or due date, and never rewrites a task it
+            already finds. Moving the underlying contract or meeting date is
+            what replaces it, because the obligation itself has changed.
+          {% else %}
+            A manual next action. Change whatever you need.
+          {% endif %}
+        {% else %}
+          Choose the kind: a <strong>next action</strong>, a
+          <strong>meeting</strong> to arrange, or a <strong>call</strong> to
+          make. The generated kinds are not on the list and appear on their own:
+          <em>Renewal</em> 90, 60 and 30 days before a contract ends,
+          <em>Quarterly meeting</em> a week before the date on the account, and
+          <em>Health alert</em> the moment an account turns At Risk. A hand-made
+          copy of one of those would duplicate the obligation rather than
+          replace it, because the generator identifies its own by a key.
+        {% endif %}
+      </p>
+
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+              {% if field.name == "repeat" %}
+                {% comment %}
+                The whole repeat block renders once, at the position of its
+                switch; the four fields behind it are skipped by the loop below.
+                {% endcomment %}
+                {% include "tasks/_repeat.html" with form=form %}
+              {% elif field.name == "repeat_frequency" or field.name == "repeat_ends" or field.name == "repeat_count" or field.name == "repeat_until" %}
+              {% elif field.name == "priority" or field.name == "progress" %}
+                <div class="mb-3">
+                  {% include "tasks/_segmented.html" with field=field %}
+                </div>
+              {% elif field.name == "contact" %}
+                {% comment %}
+                Its own container, because the account select replaces exactly
+                this block when it changes - the list of people is only ever the
+                chosen account's.
+                {% endcomment %}
+                <div class="mb-3" id="contact-field">
+                  {% include "tasks/_contact_field.html" %}
+                </div>
+              {% else %}
+                <div class="mb-3">
+                  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Save{% else %}Create {{ kind_label|lower }}{% endif %}
+              </button>
+              <a class="btn btn-outline-secondary"
+                 href="{% if next %}{{ next }}{% elif account %}{% url 'accounts:detail' account.pk %}{% else %}{% url 'tasks:list' %}{% endif %}">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

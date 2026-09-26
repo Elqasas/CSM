@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Staff{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Staff</h1>
+      <p class="text-body-secondary small mb-0">
+        Five access levels from a role plus seniority. Admin holds every
+        privilege and is the only role that may add or remove a person here.
+      </p>
+    </div>
+    <a class="btn btn-sm btn-primary" href="{% url 'users:staff_create' %}">Add person</a>
+  </div>
+
+  {% if admin_count == 1 %}
+    <div class="alert alert-warning small">
+      There is only one administrator. If that account is lost, nobody can manage
+      staff. Consider promoting a second person.
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Level</th><th>Accounts</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for person in staff %}
+            <tr class="{% if not person.is_active %}text-body-secondary{% endif %}">
+              <td>
+                {{ person.full_name }}
+                {% if person == user %}<span class="badge text-bg-light">you</span>{% endif %}
+              </td>
+              <td class="small">{{ person.email }}</td>
+              <td>
+                {% comment %}
+                One badge, because Admin is a level now rather than a marker
+                worn on top of another one.
+                {% endcomment %}
+                <span class="badge {% if person.role == 'ADMIN' %}text-bg-warning{% else %}text-bg-light{% endif %}">
+                  {{ person.effective_level_label }}
+                </span>
+              </td>
+              <td class="small">{{ person.owned_accounts }}</td>
+              <td>
+                {% if person.is_active %}
+                  <span class="badge text-bg-success">Active</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-1">
+                  <a class="btn btn-sm btn-outline-secondary"
+                     href="{% url 'users:staff_edit' person.pk %}">Edit</a>
+                  <a class="btn btn-sm btn-outline-secondary"
+                     href="{% url 'users:staff_set_password' person.pk %}">Password</a>
+                  {% if person != user %}
+                    <a class="btn btn-sm btn-outline-danger"
+                       href="{% url 'users:staff_delete' person.pk %}">Remove</a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-body-secondary py-4 text-center">Nobody yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% include "_pagination.html" %}
+{% endblock %}

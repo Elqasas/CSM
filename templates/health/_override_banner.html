@@ -1,0 +1,29 @@
+{% comment %}
+The manual-override notice, defined once and shown wherever a health status is
+shown. Expects:
+
+  override        an active HealthStatusOverride, already gated - the account
+                  page reaches it through the presenter, the panel through its
+                  view, and neither renders this block to a user without
+                  health.view.
+  computed_label  optional. What the arithmetic currently says, for surfaces
+                  that show the status on its own. The panel omits it: the
+                  factor breakdown underneath already answers that question in
+                  more detail.
+
+A status that a person set by hand and a status the engine calculated look
+identical in a pill. Anywhere the pill appears without this, the reader has no
+way to tell which they are looking at - which is why this lives beside the badge
+rather than only on the detail panel.
+{% endcomment %}
+<div class="alert alert-warning mb-0 py-2">
+  <strong>Manually overridden to {{ override.get_status_display }}.</strong>
+  <div class="small mt-1">{{ override.reason }}</div>
+  <div class="small text-body-secondary mt-1">
+    Set by {{ override.created_by.full_name|default:"a system user" }} on
+    {{ override.created_at|date:"j M Y" }}, when the computed score was
+    {{ override.score_at_override }}/{{ override.max_at_override }}.
+    {% if computed_label %}The engine currently says {{ computed_label }}.{% endif %}
+    It clears itself as soon as the computed score moves.
+  </div>
+</div>

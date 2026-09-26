@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.client_name }} &middot; Activities{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Activities</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-0">Activities</h1>
+      <p class="text-body-secondary small mb-0">
+        {% comment %}
+        Said out loud because the two halves mean different things and the page
+        is the only place they sit together. What happened is what the health
+        score reads; what is planned is not, and a page that blurred them would
+        be the first step towards a score that counts intentions.
+        {% endcomment %}
+        Everything that touched {{ account.client_name }} &mdash; what happened,
+        and what is planned. Only what happened counts towards the health score.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% include "activities/_add.html" %}
+    </div>
+  </div>
+
+  {% include "activities/_filters.html" %}
+
+  <div class="card">
+    {% include "activities/_entries.html" with entries=entries show_account=False %}
+  </div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% comment %}
+Add anything this page shows, from this page.
+
+Expects `account` when there is one. Without it the forms ask which client,
+which is the difference between the portfolio page and a client's own.
+
+A meeting and a call are task kinds, so all three go to the same form with the
+kind preselected - one form, three doors.
+
+There is no separate "log what happened" form any more. Something that already
+happened is added the same way and its status set to Completed, which closes it
+and writes the log entry. One way in, so the two can never disagree about what
+took place.
+{% endcomment %}
+{% if "task.create" in ability.capabilities %}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-primary dropdown-toggle" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false">
+      Add
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      {% for value, label, icon in add_kinds %}
+        <li>
+          <a class="dropdown-item"
+             href="{% if account %}{% url 'tasks:create' account.pk %}{% else %}{% url 'tasks:create_anywhere' %}{% endif %}?task_type={{ value }}&amp;next={{ request.get_full_path|urlencode }}">
+            <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

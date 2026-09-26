@@ -1,0 +1,23 @@
+{% comment %}
+The row HTMX swaps in after a contact is assessed. It keeps the row in place,
+now showing the grid position, rather than removing it: a row that vanished
+would leave the person unsure whether the save worked.
+{% endcomment %}
+<tr id="contact-{{ contact.pk }}" class="table-success">
+  <td>
+    <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
+      {{ contact.full_name }}
+    </a>
+    {% if contact.title %}
+      <div class="small text-body-secondary">{{ contact.title }}</div>
+    {% endif %}
+  </td>
+  <td>
+    <a href="{% url 'accounts:detail' contact.account_id %}" class="text-decoration-none">
+      {{ contact.account.client_name }}
+    </a>
+  </td>
+  <td><span class="small">{{ contact.get_influence_display }}</span></td>
+  <td><span class="small">{{ contact.get_interest_display }}</span></td>
+  <td><span class="badge text-bg-light">{{ contact.quadrant_label }}</span></td>
+</tr>

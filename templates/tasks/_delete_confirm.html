@@ -1,0 +1,67 @@
+{% comment %}
+The delete confirmation, as the inside of a dialog.
+
+Served to HTMX from the same view that serves the full page, so the two cannot
+say different things about what deleting does - and for a generated task that
+matters: it is cancelled rather than removed, because a hard delete frees its
+idempotency key and the task reappears the next morning looking like a bug.
+
+The "do not ask again" box suppresses this for the rest of today only. Stored as
+a date rather than a flag, so it expires overnight on its own and the next
+working day asks again.
+{% endcomment %}
+<div class="modal-header">
+  <h5 class="modal-title">
+    {% if task.is_system_generated %}Cancel{% else %}Delete{% endif %} this
+    {{ task.get_task_type_display|lower }}?
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form method="post" action="{% url 'tasks:delete' task.pk %}">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="modal-body">
+    <p class="mb-2"><strong>{{ task.title }}</strong></p>
+    <dl class="row small mb-3">
+      <dt class="col-4">Account</dt><dd class="col-8">{{ account.client_name }}</dd>
+      <dt class="col-4">Due</dt><dd class="col-8">{{ task.due_display }}</dd>
+      {% if task.series_id %}
+        <dt class="col-4">Repeats</dt>
+        <dd class="col-8">
+          {{ task.series.summary }}
+          <div class="text-body-secondary">
+            Only this one goes. The repeat carries on and raises the next.
+          </div>
+        </dd>
+      {% endif %}
+    </dl>
+
+    {% if task.is_system_generated %}
+      <div class="alert alert-warning small mb-3">
+        This one was generated, so it is <strong>cancelled rather than
+        deleted</strong>. Removing the row would free its key and the same task
+        would be raised again tomorrow morning.
+      </div>
+    {% endif %}
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="1" name="suppress"
+             id="suppress-delete-confirm">
+      <label class="form-check-label small" for="suppress-delete-confirm">
+        Do not ask again today
+        <span class="text-body-secondary d-block">
+          Asks again tomorrow, so a habit formed on a quiet afternoon does not
+          follow you into next week.
+        </span>
+      </label>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+      Keep it
+    </button>
+    <button type="submit" class="btn btn-danger">
+      {% if task.is_system_generated %}Cancel it{% else %}Delete{% endif %}
+    </button>
+  </div>
+</form>

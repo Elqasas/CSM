@@ -1,0 +1,10 @@
+{% comment %}
+The mark itself, without the link. Separated so the linked and unlinked cases
+share one definition of what the mark looks like.
+{% endcomment %}
+{% if account.logo %}
+  <img class="acct-logo" src="{{ account.logo.url }}" alt="" width="50" height="50">
+{% else %}
+  <span class="acct-logo acct-logo-initials acct-tint-{{ account.client_code|length|divisibleby:2|yesno:'a,b' }}"
+        aria-hidden="true">{{ account.client_name|slice:":2"|upper }}</span>
+{% endif %}

@@ -1,0 +1,52 @@
+{% comment %}
+The three-dot menu for wherever a contact is listed in a table, mirroring
+accounts/_row_actions.html: edit, add a task, add a CSAT for their account,
+delete. Expects `contact` and `next`.
+{% endcomment %}
+{% if "contact.edit" in ability.capabilities or "task.create" in ability.capabilities or "csat.record" in ability.capabilities %}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-link text-body-secondary px-1" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false"
+            aria-label="Actions for {{ contact.full_name }}">
+      <i class="bi bi-three-dots-vertical"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      {% if "contact.edit" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'contacts:edit' contact.pk %}?next={{ next|urlencode }}">
+            <i class="bi bi-pencil me-2"></i>Edit contact
+          </a>
+        </li>
+      {% endif %}
+      {% if "task.create" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'tasks:create' contact.account_id %}?contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
+            <i class="bi bi-check2-square me-2"></i>Add task
+          </a>
+        </li>
+      {% endif %}
+      {% if "csat.record" in ability.capabilities %}
+        <li>
+          <a class="dropdown-item"
+             href="{% url 'engagement:csat_create' contact.account_id %}?next={{ next|urlencode }}">
+            <i class="bi bi-emoji-smile me-2"></i>Add CSAT
+          </a>
+        </li>
+      {% endif %}
+      {% if "contact.edit" in ability.capabilities %}
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item text-danger"
+             href="{% url 'contacts:delete' contact.pk %}?next={{ next|urlencode }}"
+             hx-get="{% url 'contacts:delete' contact.pk %}?next={{ next|urlencode }}"
+             hx-target="#confirm-modal .modal-content"
+             data-bs-toggle="modal" data-bs-target="#confirm-modal">
+            <i class="bi bi-trash3 me-2"></i>Delete contact
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+{% endif %}

@@ -1,0 +1,33 @@
+{% comment %}
+The delete control, in whichever form the page needs. Expects `task`, `next`,
+and optionally `style` and `label`.
+
+It asks first, unless the reader has said not to ask again today. When it asks,
+it is a link carrying hx-get: HTMX fills the dialog, and if HTMX never loads the
+same href opens the confirmation page. Losing the ability to delete because a
+CDN was slow is not a trade worth making for a pop-up.
+
+When the asking is suppressed it is a POST, because there is nothing left to
+confirm and a GET that deletes would be followed by any link prefetcher.
+{% endcomment %}
+{% if skip_delete_confirm %}
+  <form method="post" action="{% url 'tasks:delete' task.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="{{ style|default:'btn btn-sm btn-outline-danger' }}" type="submit"
+            title="{% if task.is_system_generated %}Cancel: generated tasks are kept so they do not reappear{% else %}Delete{% endif %}"
+            aria-label="{% if task.is_system_generated %}Cancel{% else %}Delete{% endif %} {{ task.title }}">
+      <i class="bi bi-trash3" aria-hidden="true"></i>{% if label %} Delete{% endif %}
+    </button>
+  </form>
+{% else %}
+  <a class="{{ style|default:'btn btn-sm btn-outline-danger' }}"
+     href="{% url 'tasks:delete' task.pk %}?next={{ next|urlencode }}"
+     hx-get="{% url 'tasks:delete' task.pk %}?next={{ next|urlencode }}"
+     hx-target="#confirm-modal .modal-content"
+     data-bs-toggle="modal" data-bs-target="#confirm-modal"
+     title="{% if task.is_system_generated %}Cancel: generated tasks are kept so they do not reappear{% else %}Delete{% endif %}"
+     aria-label="{% if task.is_system_generated %}Cancel{% else %}Delete{% endif %} {{ task.title }}">
+    <i class="bi bi-trash3" aria-hidden="true"></i>{% if label %} Delete{% endif %}
+  </a>
+{% endif %}

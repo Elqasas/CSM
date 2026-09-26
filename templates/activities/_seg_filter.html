@@ -1,0 +1,19 @@
+{% load query %}
+{% comment %}
+One filter as a row of choices. Expects `name`, `label`, `options` and `current`.
+
+Links rather than radios: these two are the filters people flick between, and a
+link changes the page on one click where a radio needs a second one on Apply.
+Every other filter on the form is carried along in the URL, so flicking Show
+does not quietly drop the search somebody typed.
+{% endcomment %}
+<span class="form-label d-block">{{ label }}</span>
+<div class="btn-group btn-group-sm seg-group" role="group" aria-label="{{ label }}">
+  {% for value, text in options %}
+    <a class="btn btn-outline-secondary {% if current == value %}active{% endif %}"
+       href="{% set_filter name value %}"
+       aria-pressed="{% if current == value %}true{% else %}false{% endif %}">
+      {{ text }}
+    </a>
+  {% endfor %}
+</div>

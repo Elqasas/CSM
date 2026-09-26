@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Custom fields{% endblock %}
+
+{% block content %}
+  <div class="mb-3">
+    <h1 class="h4 mb-0">Custom fields</h1>
+    <p class="text-body-secondary small mb-0">
+      Free text, one input per field, on every account. Deactivating keeps the
+      values already filled in readable; it only stops offering the field on
+      new edits.
+    </p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.name.id_for_label }}">
+                {{ form.name.label }}
+              </label>
+              {{ form.name }}
+              {% for error in form.name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.field_type.id_for_label }}">
+                {{ form.field_type.label }}
+              </label>
+              {{ form.field_type }}
+              {% for error in form.field_type.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.choices_text.id_for_label }}">
+                {{ form.choices_text.label }}
+              </label>
+              {{ form.choices_text }}
+              <div class="form-text">{{ form.choices_text.help_text }}</div>
+              {% for error in form.choices_text.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Add field</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for definition in definitions %}
+                <tr class="{% if not definition.is_active %}text-body-secondary{% endif %}">
+                  <td>{{ definition.name }}</td>
+                  <td class="small">{{ definition.get_field_type_display }}</td>
+                  <td>
+                    {% if definition.is_active %}
+                      <span class="badge text-bg-success">Active</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">Inactive</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <form method="post"
+                          action="{% url 'accounts:custom_field_toggle' definition.pk %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        {% if definition.is_active %}Deactivate{% else %}Reactivate{% endif %}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="text-body-secondary py-4 text-center">No custom fields yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

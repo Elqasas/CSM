@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_create %}Add contact{% else %}{{ contact.full_name }}{% endif %}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:list' %}">Accounts</a></li>
+      {% if account %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'accounts:detail' account.pk %}">{{ account.client_name }}</a>
+        </li>
+      {% endif %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {% if is_create %}New contact{% else %}{{ contact.full_name }}{% endif %}
+      </li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-12 col-lg-8 col-xl-6">
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+              {% if field.name == "channels" %}
+                <fieldset class="mb-3">
+                  <legend class="form-label fs-6">{{ field.label }}</legend>
+                  <div class="d-flex flex-wrap gap-3">
+                    {% for choice in field %}
+                      <div class="form-check">
+                        {{ choice.tag }}
+                        <label class="form-check-label" for="{{ choice.id_for_label }}">
+                          {{ choice.choice_label }}
+                        </label>
+                      </div>
+                    {% endfor %}
+                  </div>
+                  {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                  {% endif %}
+                </fieldset>
+              {% elif field.field.widget.input_type == "checkbox" %}
+                <div class="form-check mb-3">
+                  {{ field }}
+                  <label class="form-check-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                  </label>
+                </div>
+              {% else %}
+                <div class="mb-3">
+                  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.name == "influence" or field.name == "interest" %}
+                    <div class="form-text">
+                      Leave as &ldquo;Not assessed&rdquo; until you actually know.
+                      An unassessed contact has no position on the grid, which is
+                      honest; a guessed one is not.
+                    </div>
+                  {% elif field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                {% if is_create %}Add contact{% else %}Save{% endif %}
+              </button>
+              <a class="btn btn-outline-secondary"
+                 href="{% if next %}{{ next }}{% elif account %}{% url 'accounts:detail' account.pk %}{% else %}{% url 'contacts:attention' %}{% endif %}">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
