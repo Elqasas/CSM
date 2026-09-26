@@ -225,7 +225,18 @@ class Ability:
             return base.filter(acm=self.user)
         return base.none()
 
+    @cached_property
+    def _visible_account_ids(self) -> frozenset:
+        return frozenset(self.accounts().values_list("pk", flat=True))
+
     def can_see_account(self, account) -> bool:
+        # Asked once per row by every list's action menu - four questions a
+        # row, a hundred queries a page. The visible set is read once per
+        # Ability, which lives for one request. Only a hit is trusted: an
+        # account created after the set was read would be missing from it, so
+        # a miss asks the database rather than answering no.
+        if account.pk in self._visible_account_ids:
+            return True
         return self.accounts().filter(pk=account.pk).exists()
 
     # -- Object-level decisions -------------------------------------------
