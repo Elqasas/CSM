@@ -239,12 +239,17 @@
                 Same row-link plus three-dot menu as the contacts page itself,
                 per item 2: edit, add CSAT, delete, without leaving "My day".
                 {% endcomment %}
-                <tr class="row-link" data-href="{% url 'contacts:detail' contact.pk %}">
+                <tr class="row-link" data-modal data-href="{% url 'contacts:detail' contact.pk %}">
                   <td>
-                    <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none">
-                      {{ contact.full_name }}
-                    </a>
-                    <div class="small text-body-secondary">{{ contact.title }}</div>
+                    <div class="d-flex align-items-center gap-2">
+                      {% include "contacts/_avatar.html" with contact=contact size="sm" %}
+                      <div class="min-w-0">
+                        <a data-modal href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none">
+                          {{ contact.full_name }}
+                        </a>
+                        <div class="small text-body-secondary">{{ contact.title }}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <a href="{% url 'accounts:detail' contact.account_id %}"

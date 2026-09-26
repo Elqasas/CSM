@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default:"base.html" %}
 
 {% block title %}{% if is_edit %}Edit{% else %}New{% endif %} {{ kind_label|lower }} &middot; {{ account.client_name }}{% endblock %}
 
@@ -94,7 +94,7 @@
               <button type="submit" class="btn btn-primary">
                 {% if is_edit %}Save{% else %}Create {{ kind_label|lower }}{% endif %}
               </button>
-              <a class="btn btn-outline-secondary"
+              <a class="btn btn-outline-secondary" data-modal-cancel
                  href="{% if next %}{{ next }}{% elif account %}{% url 'accounts:detail' account.pk %}{% else %}{% url 'tasks:list' %}{% endif %}">
                 Cancel
               </a>

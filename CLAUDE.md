@@ -283,6 +283,15 @@ New forms with a `URLField` must pass `assume_scheme="https"` (see
 `accounts/forms.py`). Django 6 changes the default and the warning is an error
 here.
 
+**Short forms open in a dialog** (`core/modal.py`). A link marked `data-modal`
+loads its page into `#form-modal`; the page's template extends
+`{{ base_template|default:"base.html" }}` and its Cancel link carries
+`data-modal-cancel`. The view is untouched: `ModalMiddleware` turns its success
+redirect into `HX-Refresh`, so the page behind reloads - deliberately, since a
+save can rescore the account on commit. Only requests with
+`HX-Target: form-modal-content` are affected; the delete confirmations use their
+own `#confirm-modal`. Long forms (account, import, staff) stay pages.
+
 Multi-line template commentary uses `{% comment %}`. Django's `{# #}` is
 single-line only and a multi-line one renders onto the page; a test enforces it.
 

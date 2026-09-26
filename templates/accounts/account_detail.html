@@ -74,7 +74,7 @@
                   <ul class="dropdown-menu dropdown-menu-end">
                     {% if "ticket.edit" in ability.capabilities %}
                       <li>
-                        <a class="dropdown-item"
+                        <a data-modal class="dropdown-item"
                            href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}">
                           <i class="bi bi-life-preserver me-2 text-body-secondary"></i>Ticket
                         </a>
@@ -82,7 +82,7 @@
                     {% endif %}
                     {% if "adoption.record" in ability.capabilities %}
                       <li>
-                        <a class="dropdown-item"
+                        <a data-modal class="dropdown-item"
                            href="{% url 'engagement:adoption_create' account.pk %}?next={{ request.path|urlencode }}">
                           <i class="bi bi-graph-up-arrow me-2 text-body-secondary"></i>Adoption event
                         </a>
@@ -90,7 +90,7 @@
                     {% endif %}
                     {% if "csat.record" in ability.capabilities %}
                       <li>
-                        <a class="dropdown-item"
+                        <a data-modal class="dropdown-item"
                            href="{% url 'engagement:csat_create' account.pk %}?next={{ request.path|urlencode }}">
                           <i class="bi bi-emoji-smile me-2 text-body-secondary"></i>CSAT
                         </a>
@@ -101,12 +101,12 @@
               {% endif %}
               {% if can_override %}
                 {% if presented.is_overridden %}
-                  <a class="btn btn-sm btn-outline-danger"
+                  <a data-modal class="btn btn-sm btn-outline-danger"
                      href="{% url 'health:override_clear' account.pk %}">
                     <i class="bi bi-x-circle" aria-hidden="true"></i> Clear override
                   </a>
                 {% else %}
-                  <a class="btn btn-sm btn-outline-secondary"
+                  <a data-modal class="btn btn-sm btn-outline-secondary"
                      href="{% url 'health:override' account.pk %}">
                     <i class="bi bi-hand-index-thumb" aria-hidden="true"></i> Override
                   </a>
@@ -157,7 +157,7 @@
               <span class="badge text-bg-warning">{{ triage_count }} to triage</span>
             {% endif %}
             {% if "contact.edit" in ability.capabilities %}
-              <a class="btn btn-sm btn-outline-primary"
+              <a data-modal class="btn btn-sm btn-outline-primary"
                  href="{% url 'contacts:create' account.pk %}"
                  title="Add a contact" aria-label="Add a contact">
                 <i class="bi bi-plus-lg"></i>
@@ -172,7 +172,7 @@
             <p class="text-body-secondary mb-0">
               No contacts recorded yet.
               {% if "contact.edit" in ability.capabilities %}
-                <a href="{% url 'contacts:create' account.pk %}">Add the first one.</a>
+                <a data-modal href="{% url 'contacts:create' account.pk %}">Add the first one.</a>
               {% endif %}
             </p>
           {% endif %}
@@ -273,7 +273,7 @@
           {% endcomment %}
           <span>Events</span>
           {% if "engagement.edit" in ability.capabilities %}
-            <a class="btn btn-sm btn-outline-primary"
+            <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:item_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Add an event" aria-label="Add an event">
               <i class="bi bi-plus-lg"></i>
@@ -324,7 +324,7 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                   {% for value, label, icon in add_kinds %}
                     <li>
-                      <a class="dropdown-item"
+                      <a data-modal class="dropdown-item"
                          href="{% url 'tasks:create' account.pk %}?task_type={{ value }}&amp;next={{ request.path|urlencode }}">
                         <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
                       </a>

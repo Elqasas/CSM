@@ -380,6 +380,51 @@ a.viz-legend-link:hover { background: var(--app-page); color: inherit; }
 
 
 /* ======================================================================
+   Person mark
+   ======================================================================
+   A contact's initials in a circle - round where an account's mark is square,
+   so the shape says which is which. Six tones, each a soft fill with a deep
+   ink of the same hue, so every pair reads well above AA in both themes; the
+   dark steps are chosen for the dark surface rather than inverted. */
+
+.person-mark {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  user-select: none;
+  background: var(--person-bg);
+  color: var(--person-ink);
+}
+.person-mark-sm { width: 28px; height: 28px; font-size: 0.7rem; }
+/* Lets the name beside a mark shrink and clip inside a flex row. */
+.min-w-0 { min-width: 0; }
+
+.person-tone-0 { --person-bg: #dbeafe; --person-ink: #1e3a8a; }
+.person-tone-1 { --person-bg: #dcfce7; --person-ink: #14532d; }
+.person-tone-2 { --person-bg: #fef3c7; --person-ink: #78350f; }
+.person-tone-3 { --person-bg: #fce7f3; --person-ink: #831843; }
+.person-tone-4 { --person-bg: #ede9fe; --person-ink: #4c1d95; }
+.person-tone-5 { --person-bg: #cffafe; --person-ink: #164e63; }
+
+[data-bs-theme="dark"] .person-tone-0 { --person-bg: #1e3a5f; --person-ink: #bfdbfe; }
+[data-bs-theme="dark"] .person-tone-1 { --person-bg: #1a3d2b; --person-ink: #bbf7d0; }
+[data-bs-theme="dark"] .person-tone-2 { --person-bg: #45300f; --person-ink: #fde68a; }
+[data-bs-theme="dark"] .person-tone-3 { --person-bg: #4a1d35; --person-ink: #fbcfe8; }
+[data-bs-theme="dark"] .person-tone-4 { --person-bg: #33265c; --person-ink: #ddd6fe; }
+[data-bs-theme="dark"] .person-tone-5 { --person-bg: #153e4a; --person-ink: #a5f3fc; }
+
+/* The account's own mark, small, where it sits beside a person's name. */
+.acct-logo-xs { width: 20px; height: 20px; border-radius: 0.25rem; font-size: 0.55rem; vertical-align: -5px; }
+
+
+/* ======================================================================
    Surfaces and type
    ====================================================================== */
 
@@ -983,3 +1028,4 @@ th[aria-sort="descending"] .th-sort { color: var(--brand-600); }
 /* A row that opens what it describes. The pointer is the only affordance it
    needs - the row already highlights on hover through .table-hover. */
 tr.row-link { cursor: pointer; }
+

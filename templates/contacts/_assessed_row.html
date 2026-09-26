@@ -5,12 +5,17 @@ would leave the person unsure whether the save worked.
 {% endcomment %}
 <tr id="contact-{{ contact.pk }}" class="table-success">
   <td>
-    <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
-      {{ contact.full_name }}
-    </a>
-    {% if contact.title %}
-      <div class="small text-body-secondary">{{ contact.title }}</div>
-    {% endif %}
+    <div class="d-flex align-items-center gap-2">
+      {% include "contacts/_avatar.html" with contact=contact size="sm" %}
+      <div class="min-w-0">
+        <a data-modal href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
+          {{ contact.full_name }}
+        </a>
+        {% if contact.title %}
+          <div class="small text-body-secondary">{{ contact.title }}</div>
+        {% endif %}
+      </div>
+    </div>
   </td>
   <td>
     <a href="{% url 'accounts:detail' contact.account_id %}" class="text-decoration-none">

@@ -18,7 +18,7 @@
         </a>
       {% endif %}
       {% if "contact.edit" in ability.capabilities %}
-        <a class="btn btn-sm btn-primary" href="{% url 'contacts:create_anywhere' %}">
+        <a data-modal class="btn btn-sm btn-primary" href="{% url 'contacts:create_anywhere' %}">
           <i class="bi bi-plus-lg" aria-hidden="true"></i> Add contact
         </a>
       {% endif %}
@@ -68,14 +68,19 @@
             only adds the rest of the row as a mouse target. Clicks on the
             menu are left alone.
             {% endcomment %}
-            <tr class="row-link" data-href="{% url 'contacts:detail' contact.pk %}">
+            <tr class="row-link" data-modal data-href="{% url 'contacts:detail' contact.pk %}">
               <td>
-                <a href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
-                  {{ contact.full_name }}
-                </a>
-                {% if contact.title %}
-                  <div class="small text-body-secondary">{{ contact.title }}</div>
-                {% endif %}
+                <div class="d-flex align-items-center gap-2">
+                  {% include "contacts/_avatar.html" with contact=contact size="sm" %}
+                  <div class="min-w-0">
+                    <a data-modal href="{% url 'contacts:detail' contact.pk %}" class="text-decoration-none fw-medium">
+                      {{ contact.full_name }}
+                    </a>
+                    {% if contact.title %}
+                      <div class="small text-body-secondary">{{ contact.title }}</div>
+                    {% endif %}
+                  </div>
+                </div>
               </td>
               <td>
                 <a href="{% url 'accounts:detail' contact.account_id %}" class="text-decoration-none">

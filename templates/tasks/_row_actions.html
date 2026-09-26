@@ -30,7 +30,7 @@ exactly that.
       <ul class="dropdown-menu dropdown-menu-end">
         {% if "task.edit" in ability.capabilities %}
           <li>
-            <a class="dropdown-item" href="{% url 'tasks:edit' task.pk %}?next={{ next|urlencode }}">
+            <a data-modal class="dropdown-item" href="{% url 'tasks:edit' task.pk %}?next={{ next|urlencode }}">
               <i class="bi bi-pencil me-2"></i>Edit
             </a>
           </li>

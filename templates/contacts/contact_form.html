@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default:"base.html" %}
 
 {% block title %}{% if is_create %}Add contact{% else %}{{ contact.full_name }}{% endif %}{% endblock %}
 
@@ -78,7 +78,7 @@
               <button type="submit" class="btn btn-primary">
                 {% if is_create %}Add contact{% else %}Save{% endif %}
               </button>
-              <a class="btn btn-outline-secondary"
+              <a class="btn btn-outline-secondary" data-modal-cancel
                  href="{% if next %}{{ next }}{% elif account %}{% url 'accounts:detail' account.pk %}{% else %}{% url 'contacts:attention' %}{% endif %}">
                 Cancel
               </a>

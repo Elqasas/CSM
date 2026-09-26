@@ -17,11 +17,11 @@
     <h1 class="h4 mb-0">Health</h1>
     {% if can_override %}
       {% if override %}
-        <a class="btn btn-sm btn-outline-danger" href="{% url 'health:override_clear' account.pk %}">
+        <a data-modal class="btn btn-sm btn-outline-danger" href="{% url 'health:override_clear' account.pk %}">
           Clear override
         </a>
       {% else %}
-        <a class="btn btn-sm btn-outline-secondary" href="{% url 'health:override' account.pk %}">
+        <a data-modal class="btn btn-sm btn-outline-secondary" href="{% url 'health:override' account.pk %}">
           Override status
         </a>
       {% endif %}

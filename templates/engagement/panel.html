@@ -31,7 +31,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>Events and digital content</span>
           {% if "engagement.edit" in ability.capabilities %}
-            <a class="small" href="{% url 'engagement:item_create' account.pk %}">Add</a>
+            <a data-modal class="small" href="{% url 'engagement:item_create' account.pk %}">Add</a>
           {% endif %}
         </div>
         <ul class="list-group list-group-flush">

@@ -27,7 +27,7 @@ dialog people dismiss without reading.
     <ul class="dropdown-menu dropdown-menu-end">
       {% if "task.create" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' account.id %}?next={{ next|urlencode }}">
             <i class="bi bi-check2-square me-2"></i>Add task
           </a>
@@ -35,13 +35,13 @@ dialog people dismiss without reading.
       {% endif %}
       {% if "task.create" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' account.id %}?task_type=MEETING&amp;next={{ next|urlencode }}">
             <i class="bi bi-calendar-event me-2"></i>Add meeting
           </a>
         </li>
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' account.id %}?task_type=CALL&amp;next={{ next|urlencode }}">
             <i class="bi bi-telephone me-2"></i>Add call
           </a>
@@ -49,7 +49,7 @@ dialog people dismiss without reading.
       {% endif %}
       {% if "ticket.edit" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'engagement:ticket_create' account.id %}?next={{ next|urlencode }}">
             <i class="bi bi-life-preserver me-2"></i>Add ticket
           </a>
@@ -57,7 +57,7 @@ dialog people dismiss without reading.
       {% endif %}
       {% if "adoption.record" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'engagement:adoption_create' account.id %}?next={{ next|urlencode }}">
             <i class="bi bi-graph-up-arrow me-2"></i>Add adoption event
           </a>
@@ -65,7 +65,7 @@ dialog people dismiss without reading.
       {% endif %}
       {% if "csat.record" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'engagement:csat_create' account.id %}?next={{ next|urlencode }}">
             <i class="bi bi-emoji-smile me-2"></i>Add CSAT
           </a>
@@ -73,7 +73,7 @@ dialog people dismiss without reading.
       {% endif %}
       {% if "contact.edit" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'contacts:create' account.id %}?next={{ next|urlencode }}">
             <i class="bi bi-person-plus me-2"></i>Add contact
           </a>

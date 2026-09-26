@@ -21,7 +21,7 @@ through any view.
             </span>
           </span>
           {% if "ticket.edit" in ability.capabilities %}
-            <a class="btn btn-sm btn-outline-primary"
+            <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Add a ticket" aria-label="Add a ticket">
               <i class="bi bi-plus-lg" aria-hidden="true"></i>
@@ -72,7 +72,7 @@ through any view.
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>CSAT ratings</span>
           {% if "csat.record" in ability.capabilities %}
-            <a class="btn btn-sm btn-outline-primary"
+            <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:csat_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Record a CSAT rating" aria-label="Record a CSAT rating">
               <i class="bi bi-plus-lg" aria-hidden="true"></i>
@@ -116,7 +116,7 @@ through any view.
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>Adoption events</span>
           {% if "adoption.record" in ability.capabilities %}
-            <a class="btn btn-sm btn-outline-primary"
+            <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:adoption_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Add an adoption event" aria-label="Add an adoption event">
               <i class="bi bi-plus-lg" aria-hidden="true"></i>

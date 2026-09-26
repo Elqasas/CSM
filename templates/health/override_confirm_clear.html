@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default:"base.html" %}
 
 {% block title %}Clear override &middot; {{ account.client_name }}{% endblock %}
 
@@ -25,7 +25,7 @@
         <form method="post" class="d-flex gap-2">
           {% csrf_token %}
           <button type="submit" class="btn btn-danger">Clear override</button>
-          <a class="btn btn-outline-secondary" href="{% url 'health:panel' account.pk %}">Cancel</a>
+          <a class="btn btn-outline-secondary" data-modal-cancel href="{% url 'health:panel' account.pk %}">Cancel</a>
         </form>
       {% else %}
         <p class="text-body-secondary">There is no active override on this account.</p>

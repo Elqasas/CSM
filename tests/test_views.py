@@ -267,7 +267,7 @@ def test_a_contact_name_opens_the_preview_not_the_editor(client, stakeholder, pe
             continue
         assert detail in body, page
         name_anchor = re.search(
-            rf'<a href="([^"]+)"[^>]*>\s*{re.escape(stakeholder.full_name)}', body
+            rf'<a (?:data-modal )?href="([^"]+)"[^>]*>\s*{re.escape(stakeholder.full_name)}', body
         )
         assert name_anchor, page
         assert name_anchor.group(1) == detail, page

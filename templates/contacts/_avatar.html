@@ -1,0 +1,7 @@
+{% comment %}
+A contact's mark: their initials in a circle. Expects `contact`; pass `size="sm"`
+for a list row or a grid cell. See csm/core/templatetags/people.py.
+{% endcomment %}
+{% load people %}
+<span class="person-mark person-tone-{{ contact.full_name|person_tone }}{% if size == 'sm' %} person-mark-sm{% endif %}"
+      aria-hidden="true">{{ contact.full_name|initials }}</span>

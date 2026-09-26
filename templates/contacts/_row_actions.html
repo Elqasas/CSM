@@ -14,19 +14,19 @@ form with the kind and the contact preselected. Expects `contact` and `next`.
     <ul class="dropdown-menu dropdown-menu-end">
       {% if "task.create" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' contact.account_id %}?task_type=MANUAL_NEXT_ACTION&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
             <i class="bi bi-check2-square me-2"></i>Task
           </a>
         </li>
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' contact.account_id %}?task_type=CALL&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
             <i class="bi bi-telephone me-2"></i>Call
           </a>
         </li>
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'tasks:create' contact.account_id %}?task_type=MEETING&amp;contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
             <i class="bi bi-calendar-event me-2"></i>Meeting
           </a>
@@ -34,7 +34,7 @@ form with the kind and the contact preselected. Expects `contact` and `next`.
       {% endif %}
       {% if "csat.record" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'engagement:csat_create' contact.account_id %}?contact={{ contact.pk }}&amp;next={{ next|urlencode }}">
             <i class="bi bi-emoji-smile me-2"></i>CSAT
           </a>
@@ -42,7 +42,7 @@ form with the kind and the contact preselected. Expects `contact` and `next`.
       {% endif %}
       {% if "contact.edit" in ability.capabilities %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% url 'contacts:edit' contact.pk %}?next={{ next|urlencode }}">
             <i class="bi bi-pencil me-2"></i>Edit
           </a>

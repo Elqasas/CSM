@@ -66,6 +66,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "csm.core.modal.ModalMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -87,6 +88,7 @@ TEMPLATES = [
                 # the Ability, so no template reads a role.
                 "csm.core.views.ability",
                 "csm.core.views.ui_state",
+                "csm.core.modal.base_template",
                 "csm.notifications.views.unread_count",
             ],
         },

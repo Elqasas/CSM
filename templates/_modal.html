@@ -1,0 +1,27 @@
+{% comment %}
+The layout a page uses when it is opened inside #form-modal rather than as a
+page of its own - see csm/core/modal.py. The page's own heading stays its
+title, so the dialog and the standalone page cannot word it differently; the
+breadcrumb is hidden, because inside a dialog you have not gone anywhere.
+
+The rules sit here rather than in app.css so they arrive with the markup they
+style: a browser holding yesterday's cached stylesheet would otherwise show a
+page-shaped form in a dialog-shaped box. A page's column was sized for a page;
+in a dialog it takes the full width. A bare card holding a form is flattened -
+the dialog is already the card - while a card with a header keeps its frame.
+{% endcomment %}
+<style>
+  .modal-page .breadcrumb { display: none; }
+  .modal-page > .row > [class*="col-"] { flex: 0 0 100%; max-width: 100%; width: 100%; }
+  .modal-page > .row > * > .card:not(:has(> .card-header)) {
+    border: 0; box-shadow: none; background: transparent;
+  }
+  .modal-page > .row > * > .card:not(:has(> .card-header)) > .card-body { padding: 0; }
+  .modal-page h1 { padding-right: 2rem; }
+</style>
+<div class="modal-header border-0 pb-0">
+  <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body pt-0 modal-page" data-modal-url="{{ request.get_full_path }}">
+  {% block content %}{% endblock %}
+</div>

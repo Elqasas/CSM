@@ -23,7 +23,8 @@ names from the specification are still the vocabulary on screen.
         {% for contact in cell.contacts %}
           <div class="d-flex align-items-start gap-1">
             {% include "contacts/_focal_point_toggle.html" with contact=contact %}
-            <a class="pi-contact fw-semibold" href="{% url 'contacts:detail' contact.pk %}">
+            {% include "contacts/_avatar.html" with contact=contact size="sm" %}
+            <a data-modal class="pi-contact fw-semibold" href="{% url 'contacts:detail' contact.pk %}">
               {{ contact.full_name }}
               {% if contact.title %}
                 <span class="d-block small text-body-secondary fw-normal">{{ contact.title }}</span>
@@ -50,7 +51,7 @@ names from the specification are still the vocabulary on screen.
           {% for contact in needs_triage %}
             <div class="d-flex align-items-center gap-1">
               {% include "contacts/_focal_point_toggle.html" with contact=contact %}
-              <a class="btn btn-sm btn-outline-secondary" href="{% url 'contacts:edit' contact.pk %}">
+              <a data-modal class="btn btn-sm btn-outline-secondary" href="{% url 'contacts:edit' contact.pk %}">
                 {{ contact.full_name }}
                 {% if contact.title %}&middot; {{ contact.title }}{% endif %}
               </a>

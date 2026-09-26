@@ -113,7 +113,7 @@ and the next begins, which is the first thing anybody reads a timeline for.
             {% if entry.is_task %}
               {% include "tasks/_row_buttons.html" with task=entry.source next=request.get_full_path %}
             {% elif not entry.voided and "activity.void" in ability.capabilities %}
-              <a class="btn btn-sm btn-outline-danger"
+              <a data-modal class="btn btn-sm btn-outline-danger"
                  title="Void" aria-label="Void {{ entry.title }}"
                  href="{% url 'activities:void' entry.source.pk %}">
                 <i class="bi bi-slash-circle" aria-hidden="true"></i>

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default:"base.html" %}
 
 {% block title %}Override health &middot; {{ account.client_name }}{% endblock %}
 
@@ -55,7 +55,7 @@
 
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-warning">Apply override</button>
-              <a class="btn btn-outline-secondary" href="{% url 'health:panel' account.pk %}">Cancel</a>
+              <a class="btn btn-outline-secondary" data-modal-cancel href="{% url 'health:panel' account.pk %}">Cancel</a>
             </div>
           </form>
         </div>

@@ -21,7 +21,7 @@ would be followed by any link prefetcher that passed.
     </form>
   {% endif %}
   {% if "task.edit" in ability.capabilities %}
-    <a class="btn btn-sm btn-outline-secondary"
+    <a data-modal class="btn btn-sm btn-outline-secondary"
        href="{% url 'tasks:edit' task.pk %}?next={{ next|urlencode }}"
        title="Edit" aria-label="Edit {{ task.title }}">
       <i class="bi bi-pencil" aria-hidden="true"></i>

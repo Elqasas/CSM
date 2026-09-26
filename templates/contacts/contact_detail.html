@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default:"base.html" %}
 
 {% block title %}{{ contact.full_name }}{% endblock %}
 
@@ -15,12 +15,20 @@
 
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
     <div class="d-flex align-items-start gap-3">
-      {% include "accounts/_logo.html" with account=account %}
+      {% comment %}
+      The person's own mark, not their company's: every contact at one client
+      would otherwise wear the same logo. The account's mark stays, small,
+      beside the account name.
+      {% endcomment %}
+      {% include "contacts/_avatar.html" with contact=contact %}
       <div>
         <h1 class="h4 mb-1">{{ contact.full_name }}</h1>
         <div class="text-body-secondary small">
           {% if contact.title %}{{ contact.title }} &middot; {% endif %}
           <a class="text-decoration-none" href="{% url 'accounts:detail' account.pk %}">
+            {% if account.logo %}
+              <img class="acct-logo acct-logo-xs" src="{{ account.logo.url }}" alt="" width="20" height="20">
+            {% endif %}
             {{ account.client_name }}
           </a>
           {% if not contact.is_active %}
@@ -42,27 +50,51 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>Where they sit</span>
           <div class="d-flex gap-2 align-items-center">
-            {% if contact.is_active and "task.create" in ability.capabilities %}
+            {% comment %}
+            The same four as the contact's three-dot menu, in the same order:
+            Task, Call, Meeting, CSAT - each with this person preselected.
+            {% endcomment %}
+            {% if contact.is_active and "task.create" in ability.capabilities or contact.is_active and "csat.record" in ability.capabilities %}
               <div class="dropdown">
                 <button class="btn btn-sm btn-outline-primary" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false"
-                        aria-label="Add a task for {{ contact.full_name }}">
+                        aria-label="Add something for {{ contact.full_name }}">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  {% for value, label, icon in add_kinds %}
+                  {% if "task.create" in ability.capabilities %}
                     <li>
-                      <a class="dropdown-item"
-                         href="{% url 'tasks:create' account.pk %}?task_type={{ value }}&amp;contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
-                        <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
+                      <a data-modal class="dropdown-item"
+                         href="{% url 'tasks:create' account.pk %}?task_type=MANUAL_NEXT_ACTION&amp;contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi bi-check2-square me-2 text-body-secondary"></i>Task
                       </a>
                     </li>
-                  {% endfor %}
+                    <li>
+                      <a data-modal class="dropdown-item"
+                         href="{% url 'tasks:create' account.pk %}?task_type=CALL&amp;contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi bi-telephone me-2 text-body-secondary"></i>Call
+                      </a>
+                    </li>
+                    <li>
+                      <a data-modal class="dropdown-item"
+                         href="{% url 'tasks:create' account.pk %}?task_type=MEETING&amp;contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi bi-calendar-event me-2 text-body-secondary"></i>Meeting
+                      </a>
+                    </li>
+                  {% endif %}
+                  {% if "csat.record" in ability.capabilities %}
+                    <li>
+                      <a data-modal class="dropdown-item"
+                         href="{% url 'engagement:csat_create' account.pk %}?contact={{ contact.pk }}&amp;next={{ request.path|urlencode }}">
+                        <i class="bi bi-emoji-smile me-2 text-body-secondary"></i>CSAT
+                      </a>
+                    </li>
+                  {% endif %}
                 </ul>
               </div>
             {% endif %}
             {% if "contact.edit" in ability.capabilities %}
-              <a class="btn btn-sm btn-outline-primary" href="{% url 'contacts:edit' contact.pk %}?next={{ request.path|urlencode }}">
+              <a data-modal class="btn btn-sm btn-outline-primary" href="{% url 'contacts:edit' contact.pk %}?next={{ request.path|urlencode }}">
                 <i class="bi bi-pencil" aria-hidden="true"></i> Edit
               </a>
               {% comment %}
@@ -70,11 +102,15 @@
               about to stop existing, so the view's own fallback - back to
               their account - is what should happen after.
               {% endcomment %}
+              {% comment %}
+              Opened as a dialog itself, the page asks for the confirmation in
+              the same dialog rather than stacking a second one over it.
+              {% endcomment %}
               <a class="btn btn-sm btn-outline-danger"
                  href="{% url 'contacts:delete' contact.pk %}"
-                 hx-get="{% url 'contacts:delete' contact.pk %}"
+                 {% if base_template == "_modal.html" %}data-modal{% else %}hx-get="{% url 'contacts:delete' contact.pk %}"
                  hx-target="#confirm-modal .modal-content"
-                 data-bs-toggle="modal" data-bs-target="#confirm-modal">
+                 data-bs-toggle="modal" data-bs-target="#confirm-modal"{% endif %}>
                 <i class="bi bi-trash3" aria-hidden="true"></i> Delete
               </a>
             {% endif %}

@@ -21,7 +21,7 @@ took place.
     <ul class="dropdown-menu dropdown-menu-end">
       {% for value, label, icon in add_kinds %}
         <li>
-          <a class="dropdown-item"
+          <a data-modal class="dropdown-item"
              href="{% if account %}{% url 'tasks:create' account.pk %}{% else %}{% url 'tasks:create_anywhere' %}{% endif %}?task_type={{ value }}&amp;next={{ request.get_full_path|urlencode }}">
             <i class="bi {{ icon }} me-2 text-body-secondary"></i>{{ label }}
           </a>
