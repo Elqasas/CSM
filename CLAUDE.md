@@ -19,13 +19,13 @@ All commands assume the checked-in virtualenv. On Windows the interpreter is
 ### Tests and lint
 
 ```bash
-.venv/Scripts/python -m pytest                              # full suite, 437 tests
+.venv/Scripts/python -m pytest                              # full suite, 862 tests
 .venv/Scripts/python -m pytest tests/test_health_engine.py  # one file
 .venv/Scripts/python -m pytest tests/test_access.py::test_only_the_access_package_interprets_role_or_seniority
 .venv/Scripts/python -m pytest -k "csat and stale"          # by name
 .venv/Scripts/python -m ruff check csm config tests
 .venv/Scripts/python -m djlint templates                    # template linting
-.venv/Scripts/python -m pytest --cov=csm --cov-report=term  # 94%
+.venv/Scripts/python -m pytest --cov=csm --cov-report=term  # 95%
 .venv/Scripts/python manage.py makemigrations --check --dry-run
 ```
 
@@ -41,7 +41,7 @@ DATABASE_URL=postgres://user:pass@host:5432/csm_test   pytest --ds=config.settin
 
 The schema leans on stored generated columns, partial unique indexes and JSONB.
 Both engines support all three, which is why a divergence would be silent.
-Verified clean on 16.15 — including that the partial indexes *enforce*, not
+Verified clean on 16.15 (862 tests, 2026-09-26) — including that the partial indexes *enforce*, not
 merely exist. `djlint` lints the
 templates; H021 and H023 are switched off in `pyproject.toml`, with the reason
 recorded there.
