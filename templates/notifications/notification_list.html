@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load notification_body %}
 
 {% block title %}Notifications{% endblock %}
 
@@ -40,7 +41,24 @@
                 <strong>{{ note.title }}</strong>
               </div>
               {% if note.body %}
-                <div class="small text-body-secondary mt-1">{{ note.body }}</div>
+                {% comment %}
+                The body is the email's plain text; body_lines splits it back
+                into greeting, group headings and one line per task, so a
+                digest reads as a list rather than one run-on paragraph.
+                {% endcomment %}
+                <div class="small text-body-secondary mt-1 note-body">
+                  {% for line in note.body|body_lines %}
+                    {% if line.kind == "heading" %}
+                      <div class="fw-semibold text-{{ line.tone }} mt-2">
+                        {{ line.text }} <span class="fw-normal">({{ line.count }})</span>
+                      </div>
+                    {% elif line.kind == "item" %}
+                      <div class="note-item">{{ line.text }}</div>
+                    {% else %}
+                      <div>{{ line.text }}</div>
+                    {% endif %}
+                  {% endfor %}
+                </div>
               {% endif %}
               <div class="small text-body-secondary mt-1">
                 {{ note.created_at|date:"j M Y H:i" }}

@@ -1029,3 +1029,8 @@ th[aria-sort="descending"] .th-sort { color: var(--brand-600); }
    needs - the row already highlights on hover through .table-hover. */
 tr.row-link { cursor: pointer; }
 
+
+/* A task line in a notification digest: a bullet, and a hanging indent so a
+   long title wraps under itself rather than under the bullet. */
+.note-item { position: relative; padding-left: 1rem; }
+.note-item::before { content: "\2022"; position: absolute; left: 0.25rem; }
