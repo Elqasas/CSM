@@ -1,0 +1,27 @@
+{% extends "users/_auth_page.html" %}
+
+{% block title %}Enter code{% endblock %}
+
+{% block card %}
+  <h1 class="h4 mb-1">Check your email</h1>
+  {% comment %}
+  "If an account exists" is deliberate: the page reads the same whether or not
+  anybody has this address, so it cannot be used to find out.
+  {% endcomment %}
+  <p class="text-body-secondary small mb-4">
+    If an account exists for <strong>{{ email }}</strong>, we have sent it a
+    6-digit code. It expires in {{ minutes }} minutes.
+  </p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "users/_auth_field.html" with field=form.code %}
+    <button type="submit" class="btn btn-primary w-100">Continue</button>
+  </form>
+  <form method="post" action="{% url 'users:password_forgot' %}" class="text-center mt-3 small">
+    {% csrf_token %}
+    <input type="hidden" name="email" value="{{ email }}">
+    <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">Send a new code</button>
+    &middot;
+    <a href="{% url 'users:password_forgot' %}">Use another email</a>
+  </form>
+{% endblock %}

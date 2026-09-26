@@ -185,3 +185,42 @@ class SelfPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style(self)
+
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"autocomplete": "username", "autofocus": True}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)
+
+
+class ResetCodeForm(forms.Form):
+    code = forms.CharField(
+        label="Code",
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "one-time-code",
+                "inputmode": "numeric",
+                "pattern": "[0-9]{6}",
+                "autofocus": True,
+            }
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)
+
+
+class ResetPasswordForm(SetPasswordForm):
+    """Django's own, so the password validators apply exactly as elsewhere."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)

@@ -176,3 +176,31 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.role == Role.CSM and self.is_senior:
             return "CSM Senior"
         return Role(self.role).label
+
+
+class PasswordResetCode(models.Model):
+    """A one-time code, emailed, that lets somebody who forgot their password set
+    a new one.
+
+    Only a keyed hash of the code is kept. A code is live while it is unused,
+    unexpired and under its attempt limit; issuing a new one retires the old by
+    expiring it, so exactly one code works at a time. The logic lives in
+    ``csm.users.password_reset``.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="password_reset_codes"
+    )
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "password_reset_codes"
+        indexes = [models.Index(fields=["user", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"Reset code for {self.user} at {self.created_at:%Y-%m-%d %H:%M}"

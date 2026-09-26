@@ -25,9 +25,13 @@ from django.views.generic import CreateView, FormView, ListView, UpdateView, Vie
 from csm.core.access import capabilities as cap
 from csm.core.enums import Role
 from csm.core.views import AbilityMixin, CapabilityRequiredMixin
+from csm.users import password_reset
 from csm.users.forms import (
     AdminSetPasswordForm,
     DisplayPreferenceForm,
+    ForgotPasswordForm,
+    ResetCodeForm,
+    ResetPasswordForm,
     SelfPasswordChangeForm,
     StaffUserCreateForm,
     StaffUserForm,
@@ -270,4 +274,89 @@ class SelfPasswordChangeView(AbilityMixin, LoginRequiredMixin, FormView):
         # sign you out of the browser you just used to change it.
         update_session_auth_hash(self.request, form.user)
         messages.success(self.request, "Password changed.")
+        return super().form_valid(form)
+
+
+# ---------------------------------------------------------------------------
+# Forgot password: email -> code -> new password
+# ---------------------------------------------------------------------------
+
+#: The address the reader typed, carried between the three steps. Never the
+#: user's pk: until the code is right, nothing may say whether one exists.
+RESET_EMAIL_KEY = "password_reset_email"
+#: Set once the code is right; the last step trusts nothing else.
+RESET_CODE_KEY = "password_reset_code"
+
+
+class ForgotPasswordView(FormView):
+    template_name = "users/forgot_password.html"
+    form_class = ForgotPasswordForm
+    success_url = reverse_lazy("users:password_reset_code")
+
+    def get_initial(self):
+        return {"email": self.request.session.get(RESET_EMAIL_KEY, "")}
+
+    def form_valid(self, form):
+        email = form.cleaned_data["email"].strip().lower()
+        password_reset.issue_code(email)
+        self.request.session[RESET_EMAIL_KEY] = email
+        self.request.session.pop(RESET_CODE_KEY, None)
+        return super().form_valid(form)
+
+
+class ResetCodeView(FormView):
+    template_name = "users/reset_code.html"
+    form_class = ResetCodeForm
+    success_url = reverse_lazy("users:password_reset_new")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get(RESET_EMAIL_KEY):
+            return redirect("users:password_forgot")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["email"] = self.request.session[RESET_EMAIL_KEY]
+        context["minutes"] = password_reset.CODE_MINUTES
+        return context
+
+    def form_valid(self, form):
+        row = password_reset.verify_code(
+            self.request.session[RESET_EMAIL_KEY], form.cleaned_data["code"]
+        )
+        if row is None:
+            # One message for a wrong code, an expired one, too many tries and
+            # an address with no account - each distinction leaks something.
+            form.add_error(
+                "code",
+                "That code is wrong or has expired. Check the latest email, or send a new code.",
+            )
+            return self.form_invalid(form)
+        self.request.session[RESET_CODE_KEY] = row.pk
+        return super().form_valid(form)
+
+
+class ResetPasswordView(FormView):
+    template_name = "users/reset_password.html"
+    form_class = ResetPasswordForm
+    success_url = reverse_lazy("users:login")
+
+    def dispatch(self, request, *args, **kwargs):
+        self.code = password_reset.verified_code(request.session.get(RESET_CODE_KEY))
+        if self.code is None:
+            request.session.pop(RESET_CODE_KEY, None)
+            messages.error(request, "That code has expired. Send a new one to carry on.")
+            return redirect("users:password_forgot")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.code.user
+        return kwargs
+
+    def form_valid(self, form):
+        password_reset.complete_reset(self.code, form.cleaned_data["new_password1"])
+        self.request.session.pop(RESET_CODE_KEY, None)
+        self.request.session.pop(RESET_EMAIL_KEY, None)
+        messages.success(self.request, "Password changed. Sign in with the new one.")
         return super().form_valid(form)

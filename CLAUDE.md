@@ -468,7 +468,10 @@ before Description on every account's form; **engagement entry**
 engagement items; account create and soft delete; contact create, edit and
 hard delete (a contact carries no soft-delete columns of its own — everything
 that names one, `Activity`/`Task`/`CsatResponse`, is `SET_NULL`); task edit
-and delete; and **in-app notifications** (`/notifications/`).
+and delete; and **in-app notifications** (`/notifications/`); and **forgot password**
+(`/auth/forgot/`) by emailed six-digit code - `users/password_reset.py`, sent at
+once rather than through the outbox, identical pages for known and unknown
+addresses, five guesses, ten minutes, three codes an hour.
 
 Every capability has a surface except `lifecycle.edit` (enforced by the account
 form omitting the field).
