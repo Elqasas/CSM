@@ -52,6 +52,7 @@ through any view.
                     </form>
                   {% endif %}
                   <form method="post" action="{% url 'engagement:delete' account.pk 'ticket' ticket.pk %}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                   </form>
@@ -97,6 +98,7 @@ through any view.
               </div>
               {% if "csat.record" in ability.capabilities %}
                 <form method="post" action="{% url 'engagement:delete' account.pk 'csat' rating.pk %}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                 </form>
@@ -136,6 +138,7 @@ through any view.
               </div>
               {% if "adoption.record" in ability.capabilities %}
                 <form method="post" action="{% url 'engagement:delete' account.pk 'adoption' event.pk %}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                 </form>

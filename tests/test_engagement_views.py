@@ -243,6 +243,46 @@ def test_an_acm_cannot_delete_a_ticket(client, account, people):
     assert Ticket.objects.count() == 1
 
 
+def test_deleting_a_csat_returns_to_the_page_it_was_deleted_from(client, account, people):
+    rating = CsatResponse.objects.create(
+        account=account, score=2, recorded_on=dt.date.today(), created_by=people["csm"]
+    )
+    login(client, people["csm"])
+    health = reverse("health:panel", args=[account.pk])
+    page = client.get(health).content.decode()
+    assert f'name="next" value="{health}"' in page
+
+    response = client.post(
+        reverse("engagement:delete", args=[account.pk, "csat", rating.pk]),
+        {"next": health},
+    )
+    assert response.status_code == 302
+    assert response["Location"] == health
+    assert not CsatResponse.objects.exists()
+
+
+def test_a_delete_with_no_next_returns_to_the_page_that_lists_the_row(client, account, people):
+    """Health inputs go back to the health page; only an item to Events."""
+    rating = CsatResponse.objects.create(
+        account=account, score=2, recorded_on=dt.date.today(), created_by=people["csm"]
+    )
+    login(client, people["csm"])
+    response = client.post(reverse("engagement:delete", args=[account.pk, "csat", rating.pk]))
+    assert response["Location"] == reverse("health:panel", args=[account.pk])
+
+
+def test_a_delete_refuses_a_next_on_another_host(client, account, people):
+    rating = CsatResponse.objects.create(
+        account=account, score=2, recorded_on=dt.date.today(), created_by=people["csm"]
+    )
+    login(client, people["csm"])
+    response = client.post(
+        reverse("engagement:delete", args=[account.pk, "csat", rating.pk]),
+        {"next": "https://evil.example/login"},
+    )
+    assert response["Location"] == reverse("health:panel", args=[account.pk])
+
+
 def test_an_unknown_record_kind_is_a_404_not_a_crash(client, account, people):
     login(client, people["csm"])
     response = client.post(f"/engagement/account/{account.pk}/nonsense/1/delete/")

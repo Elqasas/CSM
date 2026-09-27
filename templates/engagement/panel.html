@@ -47,6 +47,7 @@
               </div>
               {% if "engagement.edit" in ability.capabilities %}
                 <form method="post" action="{% url 'engagement:delete' account.pk 'item' item.pk %}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                 </form>

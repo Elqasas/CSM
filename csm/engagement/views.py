@@ -193,4 +193,8 @@ class EngagementDeleteView(AccountScopedMixin, View):
         record = get_object_or_404(model, pk=pk, account=self.account)
         record.delete()
         messages.success(request, "Deleted.")
-        return redirect("engagement:panel", account_pk=account_pk)
+        # Back to the page the row was deleted from. Without one, to the page
+        # that lists it: tickets, CSAT and adoption sit on the health page,
+        # beside the factors they move, and only an item lives on Events.
+        home = "engagement:panel" if what == "item" else "health:panel"
+        return redirect(safe_next(request) or reverse(home, args=[account_pk]))
