@@ -80,6 +80,43 @@ through any view.
             </a>
           {% endif %}
         </div>
+        {% if csat_quarters %}
+          {% comment %}
+          The factor scores the newest quarter here: each contact's latest
+          rating in it, averaged. Older quarters are shown for the trend and
+          count for nothing.
+          {% endcomment %}
+          <div class="table-responsive border-bottom">
+            <table class="table table-sm mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Quarter</th>
+                  <th scope="col">Average</th>
+                  <th scope="col">Contacts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for q in csat_quarters %}
+                  <tr>
+                    <td>
+                      {{ q.label }}
+                      {% if forloop.first %}<span class="small text-body-secondary">&middot; scored</span>{% endif %}
+                    </td>
+                    <td>
+                      <span class="badge
+                        {% if q.color == 'GREEN' %}text-bg-success
+                        {% elif q.color == 'YELLOW' %}text-bg-warning
+                        {% else %}text-bg-danger{% endif %}">{{ q.average }}</span>
+                    </td>
+                    <td class="small text-body-secondary">
+                      {{ q.voices }}{% if q.ratings != q.voices %} ({{ q.ratings }} ratings){% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
         <ul class="list-group list-group-flush">
           {% for rating in csat %}
             <li class="list-group-item d-flex justify-content-between align-items-start gap-2">

@@ -127,6 +127,8 @@ and both insert.
 | Managed account with no meeting frequency | Factor omitted, scored out of 80, weights not redistributed, and capped at Watch. |
 | Timezone for day counts | Africa/Cairo. All storage stays UTC; `core/clock.py` is the only conversion point. |
 | Missing or stale CSAT | Scored 50, flagged. Zero would redline the portfolio at go-live; 100 would hide real risk. |
+| CSAT with several raters | The latest calendar quarter holding a rating, each contact's latest rating in it counted once, averaged: 4.00+ green, 3.00+ yellow. Several stakeholders rate each quarter, so the newest single rating let whoever was typed in last decide. Last quarter holds until the next round is collected. |
+| CSAT points | Proportional, not stepped: 25 x (average - 1) from 2.00 up - so 2.00 is 25, 3.00 is 50, 4.00 is 75, 5.00 is 100 - and below 2.00 a line from 5 points at 1.00 to 25 at 2.00, so the worst average still adds 1% on a managed account (1.25% non-managed) rather than nothing. The colour stays banded and is what the red-factor cap counts. |
 | Task emails | One digest per person per morning, plus an immediate standalone email for every health alert. |
 | Medium on the power/interest grid | Counts as high influence, low interest. Medium/Medium is Keep satisfied. |
 | An unassessed contact | Influence and interest are nullable with no default. Unassessed is not Medium. |
@@ -199,9 +201,11 @@ otherwise have surfaced in production.
 - **`scoring_baseline_date`** generalises the import baseline rule. The spec sets
   a baseline at import but not on the Onboarding to Active transition, where an
   account with no history in its new stage would read as months of neglect.
-- **Meeting Attendance gets a thirty-day grace window** after the baseline. It
-  counts events in a window, so the baseline floor does not help it and a managed
-  account imported today would be zero percent compliant on day one.
+- **Meeting Attendance has no grace window.** Only completed Meeting activities
+  in the current calendar month count (1st to today, restarting at zero on the
+  1st); filling in the frequency or the account's dates
+  earns nothing, so a managed account with no meeting yet is red. (Engine 1.1.0
+  and earlier scored it green for 30 days after the baseline.)
 - **Quarterly rollover.** If the meeting date goes stale and nobody sets a new
   one, the account would silently stop receiving reminders forever. A nudge task
   is created instead.

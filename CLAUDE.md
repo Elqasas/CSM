@@ -101,8 +101,17 @@ Do not add a field to `ScoringInput` to make a calculation convenient.
 Thresholds live in `health/config.py` rather than a database table because
 changing one retroactively changes the meaning of every stored history row.
 **Bump `ENGINE_VERSION` whenever a number there changes** — each history row
-records the version that produced it. It is at 1.1.0: 1.0.0 predates the
-red-factor cap.
+records the version that produced it. It is at 1.3.0: 1.0.0 predates the
+red-factor cap, and 1.1.0 still gave Meeting Attendance a 30-day green grace
+after the baseline date and counted a trailing 30 days. Now only completed
+Meeting activities in the current calendar month count. 1.2.0 scored CSAT on
+the single newest rating; now it is the latest calendar quarter that holds a
+rating, each contact's latest rating in it counted once and averaged (green at
+4.00, yellow at 3.00). CSAT is the one factor whose points are proportional
+rather than stepped by colour: 25 x (average - 1) from 2.00 up, and a line
+from 5 points at 1.00 to 25 at 2.00, so even a 1.00 adds 1% on a managed
+account. The red-factor cap therefore counts
+colours, never zero points.
 
 Two structural caps sit in `engine.band()` and neither touches a weight, so old
 history stays interpretable. The **omission cap** forces Watch when a factor is
@@ -441,6 +450,8 @@ rationale is in [README.md](README.md).
 | Managed account with no meeting frequency | Factor omitted, scored out of 80, weights **not** redistributed, band capped at Watch. |
 | Timezone | Africa/Cairo for all day counts. |
 | Missing or stale CSAT | Scored 50 and flagged. Not omitted, not green. |
+| CSAT with several raters | Latest rated quarter, one voice per contact at their latest, averaged. Last quarter holds until the next is rated. |
+| CSAT points | Proportional to the average: 25 x (average - 1) from 2.00 up; 5 points at 1.00 rising to 25 at 2.00. A 1.00 adds 1% (managed), not zero. |
 | Task emails | One digest per person per morning, plus an immediate standalone email per health alert. |
 
 The 80-point cap needs stating precisely: four green factors at 20% each is

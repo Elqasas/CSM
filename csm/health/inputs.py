@@ -6,7 +6,7 @@ module reads; ``engine.score`` decides.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 from django.db.models import Count, Q
 
@@ -14,8 +14,8 @@ from csm.accounts.models import Account
 from csm.activities.models import Activity
 from csm.core.enums import TicketKind, TicketStatus
 from csm.engagement.models import AdoptionEvent, CsatResponse, Ticket
-from csm.health import config
 from csm.health.engine import ScoringInput
+from csm.health.factors import CsatRating
 
 
 def baseline_for(account: Account, as_of: date) -> date:
@@ -25,6 +25,16 @@ def baseline_for(account: Account, as_of: date) -> date:
     baseline reads as a clean start rather than as years of neglect.
     """
     return account.scoring_baseline_date or as_of
+
+
+def meeting_window_start(as_of: date) -> date:
+    """The 1st of ``as_of``'s calendar month: Meeting Attendance counts from here."""
+    return as_of.replace(day=1)
+
+
+def quarter_start(day: date) -> date:
+    """The 1st of ``day``'s calendar quarter: CSAT averages from here."""
+    return day.replace(month=(day.month - 1) // 3 * 3 + 1, day=1)
 
 
 def gather_inputs(account: Account, as_of: date) -> ScoringInput:
@@ -46,12 +56,17 @@ def gather_inputs(account: Account, as_of: date) -> ScoringInput:
         .first()
     )
 
-    latest_csat = (
-        CsatResponse.objects.filter(account=account, recorded_on__lte=as_of)
-        .order_by("-recorded_on", "-id")
-        .values("score", "recorded_on")
-        .first()
-    )
+    # Only the latest rated quarter is scored, so only its ratings are read.
+    csat = CsatResponse.objects.filter(account=account, recorded_on__lte=as_of)
+    latest_csat_on = csat.order_by("-recorded_on").values_list("recorded_on", flat=True).first()
+    csat_ratings = ()
+    if latest_csat_on is not None:
+        csat_ratings = tuple(
+            CsatRating(score=score, recorded_on=on, contact_id=contact_id, rating_id=pk)
+            for pk, score, on, contact_id in csat.filter(
+                recorded_on__gte=quarter_start(latest_csat_on)
+            ).values_list("pk", "score", "recorded_on", "contact_id")
+        )
 
     activities = Activity.objects.filter(account=account, occurred_on__lte=as_of)
 
@@ -68,9 +83,8 @@ def gather_inputs(account: Account, as_of: date) -> ScoringInput:
         .first()
     )
 
-    window_start = as_of - timedelta(days=config.MEETING_WINDOW_DAYS)
     meetings_in_window = (
-        activities.meetings().filter(occurred_on__gte=window_start).count()
+        activities.meetings().filter(occurred_on__gte=meeting_window_start(as_of)).count()
     )
 
     return ScoringInput(
@@ -82,8 +96,7 @@ def gather_inputs(account: Account, as_of: date) -> ScoringInput:
         open_general_tickets=ticket_counts["general"] or 0,
         has_ticket_data=has_ticket_data,
         last_adoption_event_on=last_adoption,
-        latest_csat_score=latest_csat["score"] if latest_csat else None,
-        latest_csat_on=latest_csat["recorded_on"] if latest_csat else None,
+        csat_ratings=csat_ratings,
         last_general_contact_on=last_general,
         last_weekly_contact_on=last_weekly,
         meetings_in_window=meetings_in_window,

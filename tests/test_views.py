@@ -1184,3 +1184,23 @@ def test_a_manager_gets_no_create_button_at_all(client, portfolio, people):
     assert reverse("tasks:create_anywhere") not in body
     assert reverse("contacts:create_anywhere") not in body
     assert reverse("accounts:create") not in body
+
+
+def test_the_health_panel_shows_each_quarters_csat_average(client, portfolio, people):
+    """The number beside the ratings is the one the factor scores."""
+    from csm.core.clock import today
+    from tests.factories import CsatFactory
+
+    account = portfolio["mine"]
+    first = ContactFactory(account=account, full_name="First Rater")
+    second = ContactFactory(account=account, full_name="Second Rater")
+    CsatFactory(account=account, contact=first, score=5, recorded_on=today())
+    CsatFactory(account=account, contact=second, score=2, recorded_on=today())
+
+    login(client, people["csm"])
+    response = client.get(reverse("health:panel", args=[account.pk]))
+
+    (latest,) = response.context["csat_quarters"][:1]
+    assert str(latest.average) == "3.50"
+    assert latest.voices == 2
+    assert "3.50" in response.content.decode()

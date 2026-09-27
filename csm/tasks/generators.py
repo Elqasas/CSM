@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.db import transaction
 
@@ -298,7 +299,8 @@ def _alert_description(account: Account, event: HealthRecalculated) -> str:
         weak = [
             (fid, data) for fid, data in factors.items() if data.get("color") in ("RED", "YELLOW")
         ]
-        weak.sort(key=lambda pair: pair[1].get("points") or 0)
+        # Points may be stored as a string: CSAT's are fractional.
+        weak.sort(key=lambda pair: Decimal(str(pair[1].get("points") or 0)))
         if weak:
             named = ", ".join(
                 "{} ({})".format(fid.replace("_", " ").title(), data["color"].lower())

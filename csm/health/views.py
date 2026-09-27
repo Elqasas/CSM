@@ -17,6 +17,7 @@ from csm.core.access.presenters import AccountPresenter
 from csm.core.clock import today
 from csm.core.enums import FactorId
 from csm.core.views import AccountScopedMixin
+from csm.health.factors import CsatRating, csat_quarters
 from csm.health.forms import OverrideForm
 from csm.health.models import HealthScoreHistory
 from csm.health.services import OverrideNotAllowed, active_override, apply_override, clear_override
@@ -52,6 +53,14 @@ class HealthPanelView(AccountScopedMixin, TemplateView):
         context["tickets"] = account.tickets.order_by("status", "-opened_on")[:30]
         context["open_tickets"] = account.tickets.open().count()
         context["csat"] = account.csat_responses.order_by("-recorded_on")[:20]
+        # Each quarter's average, by the same rule the factor scores the latest
+        # one with, so the number beside the ratings is the number that counts.
+        context["csat_quarters"] = csat_quarters(
+            CsatRating(score=score, recorded_on=on, contact_id=contact_id, rating_id=pk)
+            for pk, score, on, contact_id in account.csat_responses.filter(
+                recorded_on__lte=today()
+            ).values_list("pk", "score", "recorded_on", "contact_id")
+        )[:8]
         context["adoption"] = account.adoption_events.order_by("-occurred_on")[:20]
         context["ticket_weight"] = sum(
             3 if ticket.ticket_kind == "BUG" else 1

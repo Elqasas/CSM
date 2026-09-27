@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
-from csm.core.enums import SCORABLE_STAGES, FactorId, HealthStatus
+from csm.core.enums import SCORABLE_STAGES, FactorColor, FactorId, HealthStatus
 from csm.health import config, factors
 from csm.health.factors import FactorResult
 
@@ -40,8 +40,9 @@ class ScoringInput:
 
     last_adoption_event_on: date | None = None
 
-    latest_csat_score: int | None = None
-    latest_csat_on: date | None = None
+    # The ratings of the latest quarter that holds any; the factor averages
+    # them. See ``factors.csat``.
+    csat_ratings: tuple[factors.CsatRating, ...] = ()
 
     last_general_contact_on: date | None = None
     last_weekly_contact_on: date | None = None
@@ -76,7 +77,9 @@ class ScoreResult:
                 f.factor: {
                     "outcome": f.outcome,
                     "color": f.color,
-                    "points": f.points,
+                    # JSON has no Decimal; a fractional CSAT points value is
+                    # stored as its string, a whole one as a number.
+                    "points": str(f.points) if isinstance(f.points, Decimal) else f.points,
                     "weight": str(self._weight()),
                     "contribution": str(self._contribution(f)),
                     "reason": f.reason,
@@ -184,7 +187,8 @@ def score(inp: ScoringInput, as_of: date) -> ScoreResult | None:
         (Decimal(config.GREEN_POINTS) * factor_set.weight_per_factor * len(scored)).to_integral_value()
     )
 
-    red_factors = sum(1 for f in scored if f.points == config.RED_POINTS)
+    # By colour, not by zero points: a red CSAT still earns its floor.
+    red_factors = sum(1 for f in scored if f.color == FactorColor.RED)
     status = band(
         total,
         has_omissions=bool(omitted),
@@ -224,8 +228,7 @@ def _evaluate(factor_id: str, inp: ScoringInput, as_of: date) -> FactorResult:
         )
     if factor_id == FactorId.CSAT:
         return factors.csat(
-            latest_score=inp.latest_csat_score,
-            latest_on=inp.latest_csat_on,
+            ratings=inp.csat_ratings,
             as_of=as_of,
         )
     if factor_id == FactorId.GENERAL_CONTACT:
@@ -244,7 +247,5 @@ def _evaluate(factor_id: str, inp: ScoringInput, as_of: date) -> FactorResult:
         return factors.meeting_attendance(
             meetings_in_window=inp.meetings_in_window,
             required_per_month=inp.required_meeting_frequency,
-            baseline=inp.baseline_date,
-            as_of=as_of,
         )
     raise ValueError(f"Unknown factor: {factor_id}")
