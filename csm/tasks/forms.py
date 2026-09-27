@@ -68,7 +68,8 @@ class TaskForm(forms.Form):
         widget=forms.RadioSelect(attrs={"class": "btn-check", "autocomplete": "off"}),
         help_text=(
             "Choose Completed for something that has already happened - it "
-            "closes the task and writes it to the account's log."
+            "closes the task and writes it to the account's log, dated on the "
+            "day given above. Only a completed task may have a past date."
         ),
     )
     priority = forms.TypedChoiceField(
@@ -148,6 +149,7 @@ class TaskForm(forms.Form):
         nobody can undo by waiting.
         """
         cleaned = super().clean()
+        self._refuse_a_past_date_unless_it_happened(cleaned)
         if not cleaned.get("repeat"):
             return cleaned
 
@@ -172,17 +174,29 @@ class TaskForm(forms.Form):
                 )
         return cleaned
 
-    def clean_due_date(self):
-        """A new task cannot start life overdue. An existing one already is.
+    def _refuse_a_past_date_unless_it_happened(self, cleaned):
+        """A new task cannot start life overdue - unless it is already done.
 
-        Enforcing this on edit too would make an overdue task uneditable: you
-        could not correct its title without also moving its date, which is the
-        opposite of what someone chasing an overdue task wants.
+        A past date on a Completed task is a record of something that happened
+        then: the call last Tuesday, entered today. Anything else with a past
+        date would be born overdue. A repeat is refused too, because its later
+        occurrences would be stamped out in the past as well.
+
+        Checked here rather than in ``clean_due_date`` because it depends on
+        Status, which is cleaned after the date. Not enforced on edit: an
+        overdue task must stay editable without moving its date.
         """
-        due_date = self.cleaned_data["due_date"]
-        if not self.editing and due_date < today():
-            raise forms.ValidationError("A new task cannot already be overdue.")
-        return due_date
+        due_date = cleaned.get("due_date")
+        if self.editing or due_date is None or due_date >= today():
+            return
+        if cleaned.get("repeat"):
+            self.add_error("due_date", "A repeat cannot start in the past.")
+        elif cleaned.get("progress") != TaskProgress.COMPLETED:
+            self.add_error(
+                "due_date",
+                "A new task cannot already be overdue. If it has already "
+                "happened, set Status to Completed.",
+            )
 
 
 class TaskAnywhereForm(TaskForm):

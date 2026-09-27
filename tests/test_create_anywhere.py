@@ -18,8 +18,10 @@ import datetime as dt
 import pytest
 from django.urls import reverse
 
+from csm.activities.models import Activity
 from csm.contacts.models import Contact
-from csm.core.enums import CommunicationChannel, Level
+from csm.core.clock import today
+from csm.core.enums import ActivityType, CommunicationChannel, Level, TaskStatus
 from csm.tasks.models import Task
 from tests.factories import AccountFactory, ContactFactory, UserFactory
 from tests.test_views import PASSWORD, login
@@ -245,3 +247,82 @@ def test_a_manager_gets_no_new_task_button(client, mine, people):
     body = client.get(reverse("tasks:list")).content.decode()
     assert reverse("tasks:create_anywhere") not in body
     assert client.get(reverse("tasks:create_anywhere")).status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# A past date is a record of something that happened - and only that
+# ---------------------------------------------------------------------------
+
+
+def _past_payload(account, *, title, progress, days_ago=5, **extra):
+    return {
+        "account": account.pk, "title": title,
+        "due_date": (today() - dt.timedelta(days=days_ago)).isoformat(),
+        "category": "CLIENT_FACING", "priority": "MEDIUM", "progress": progress,
+        "task_type": "MEETING", "contact": "", "description": "", **extra,
+    }
+
+
+@pytest.mark.parametrize("url_name", ["tasks:create_anywhere", "tasks:create"])
+def test_a_past_date_is_refused_unless_completed(client, mine, people, url_name):
+    login(client, people["csm"])
+    args = [mine.pk] if url_name == "tasks:create" else []
+    response = client.post(
+        reverse(url_name, args=args),
+        _past_payload(mine, title="Born overdue", progress="NOT_STARTED"),
+    )
+
+    assert response.status_code == 200
+    assert "set Status to Completed" in response.content.decode()
+    assert not Task.objects.filter(title="Born overdue").exists()
+
+
+@pytest.mark.parametrize("url_name", ["tasks:create_anywhere", "tasks:create"])
+def test_a_completed_meeting_may_carry_its_past_date(
+    client, mine, people, url_name, django_capture_on_commit_callbacks
+):
+    """Entered today, it happened five days ago - and the log says so, which
+    is what decides the calendar month Meeting Attendance counts it in."""
+    login(client, people["csm"])
+    args = [mine.pk] if url_name == "tasks:create" else []
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(
+            reverse(url_name, args=args),
+            _past_payload(mine, title="Met last week", progress="COMPLETED"),
+        )
+
+    assert response.status_code == 302
+    task = Task.objects.get(title="Met last week")
+    assert task.status == TaskStatus.DONE
+    entry = Activity.objects.get(task=task)
+    assert entry.activity_type == ActivityType.MEETING
+    assert entry.occurred_on == today() - dt.timedelta(days=5)
+
+
+def test_a_completed_task_is_never_logged_in_the_future(
+    client, mine, people, django_capture_on_commit_callbacks
+):
+    login(client, people["csm"])
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(
+            reverse("tasks:create_anywhere"),
+            _past_payload(mine, title="Ahead of itself", progress="COMPLETED", days_ago=-3),
+        )
+
+    assert Activity.objects.get(task__title="Ahead of itself").occurred_on == today()
+
+
+def test_a_completed_repeat_cannot_start_in_the_past(client, mine, people):
+    """Its later occurrences would be stamped out in the past too."""
+    login(client, people["csm"])
+    response = client.post(
+        reverse("tasks:create_anywhere"),
+        _past_payload(
+            mine, title="Weekly, backdated", progress="COMPLETED",
+            repeat="on", repeat_frequency="WEEKLY", repeat_ends="NEVER",
+        ),
+    )
+
+    assert response.status_code == 200
+    assert "cannot start in the past" in response.content.decode()
+    assert not Task.objects.filter(title="Weekly, backdated").exists()

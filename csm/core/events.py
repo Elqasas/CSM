@@ -77,6 +77,9 @@ class TaskCompleted(DomainEvent):
     account_id: int
     task_type: str
     completed_by_id: int | None
+    # Set only when the task records something that already happened, entered
+    # with its real date. None means it happened on the day it was completed.
+    occurred_on: date | None = None
 
 
 @dataclass(frozen=True)
