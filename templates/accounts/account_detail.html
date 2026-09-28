@@ -304,6 +304,62 @@
           {% endfor %}
         </ul>
       </div>
+      {% if "note.view" in ability.capabilities %}
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            {% comment %}
+            Free text, undated and outside the score: whatever the people
+            working the account want kept in front of them. Shared by everyone
+            who can open the account, rather than private to the writer.
+            {% endcomment %}
+            <span>Notes</span>
+            {% if "note.edit" in ability.capabilities %}
+              <a data-modal class="btn btn-sm btn-outline-primary"
+                 href="{% url 'accounts:note_create' account.pk %}?next={{ request.path|urlencode }}"
+                 title="Add a note" aria-label="Add a note">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+              </a>
+            {% endif %}
+          </div>
+          <ul class="list-group list-group-flush">
+            {% for note in notes %}
+              <li class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div class="min-w-0">
+                    <div class="note-text">{{ note.body|linebreaksbr }}</div>
+                    <div class="small text-body-secondary mt-1">
+                      {{ note.created_by.full_name|default:"Someone" }} &middot; {{ note.created_at|date:"j M Y" }}
+                      {% if note.updated_at|date:"YmdHi" != note.created_at|date:"YmdHi" %}
+                        &middot; edited {{ note.updated_at|date:"j M Y" }}{% if note.updated_by and note.updated_by != note.created_by %} by {{ note.updated_by.full_name }}{% endif %}
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% if "note.edit" in ability.capabilities %}
+                    <div class="d-inline-flex gap-1 row-actions flex-shrink-0">
+                      <a data-modal class="btn btn-sm btn-outline-secondary"
+                         href="{% url 'accounts:note_edit' account.pk note.pk %}?next={{ request.path|urlencode }}"
+                         title="Edit" aria-label="Edit note">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                      </a>
+                      <form method="post" action="{% url 'accounts:note_delete' account.pk note.pk %}"
+                            onsubmit="return confirm('Delete this note?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button class="btn btn-sm btn-outline-danger" type="submit"
+                                title="Delete" aria-label="Delete note">
+                          <i class="bi bi-trash3" aria-hidden="true"></i>
+                        </button>
+                      </form>
+                    </div>
+                  {% endif %}
+                </div>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-body-secondary">No notes yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <span>Open activities</span>

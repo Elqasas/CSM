@@ -1034,3 +1034,7 @@ tr.row-link { cursor: pointer; }
    long title wraps under itself rather than under the bullet. */
 .note-item { position: relative; padding-left: 1rem; }
 .note-item::before { content: "\2022"; position: absolute; left: 0.25rem; }
+
+/* Account notes: a pasted URL or a long unbroken word must wrap rather than
+   push the edit and delete buttons off the card. */
+.note-text { overflow-wrap: anywhere; }

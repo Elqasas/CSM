@@ -15,7 +15,12 @@ from django import forms
 from django.conf import settings
 from django.db import models
 
-from csm.accounts.models import Account, AccountCustomFieldDefinition, AccountCustomFieldValue
+from csm.accounts.models import (
+    Account,
+    AccountCustomFieldDefinition,
+    AccountCustomFieldValue,
+    AccountNote,
+)
 from csm.core.access import capabilities as cap
 from csm.core.enums import CustomFieldType
 
@@ -348,3 +353,11 @@ class CustomFieldDefinitionForm(forms.ModelForm):
                 "choices_text", "List at least one option for a dropdown field."
             )
         return cleaned
+
+
+class AccountNoteForm(forms.ModelForm):
+    class Meta:
+        model = AccountNote
+        fields = ["body"]
+        labels = {"body": "Note"}
+        widgets = {"body": forms.Textarea(attrs={"class": "form-control", "rows": 5})}

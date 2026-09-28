@@ -24,6 +24,9 @@ CSAT_RECORD = "csat.record"
 ADOPTION_RECORD = "adoption.record"
 ENGAGEMENT_EDIT = "engagement.edit"
 
+NOTE_VIEW = "note.view"
+NOTE_EDIT = "note.edit"
+
 TASK_VIEW = "task.view"
 TASK_CREATE = "task.create"
 TASK_EDIT = "task.edit"
@@ -56,6 +59,8 @@ ALL = frozenset(
         CSAT_RECORD,
         ADOPTION_RECORD,
         ENGAGEMENT_EDIT,
+        NOTE_VIEW,
+        NOTE_EDIT,
         TASK_VIEW,
         TASK_CREATE,
         TASK_EDIT,

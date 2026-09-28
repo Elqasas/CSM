@@ -35,6 +35,8 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.CSAT_RECORD,
             cap.ADOPTION_RECORD,
             cap.ENGAGEMENT_EDIT,
+            cap.NOTE_VIEW,
+            cap.NOTE_EDIT,
             cap.TASK_VIEW,
             cap.TASK_CREATE,
             cap.TASK_EDIT,
@@ -64,9 +66,12 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.IMPORT_RUN,
             cap.EXPORT_RUN,
             # Deliberately absent: HEALTH_VIEW, HEALTH_OVERRIDE, LIFECYCLE_EDIT,
-            # TICKET_EDIT, CSAT_RECORD, ADOPTION_RECORD, ACCOUNT_EDIT. An ACM owns
+            # TICKET_EDIT, CSAT_RECORD, ADOPTION_RECORD, ACCOUNT_EDIT, NOTE_VIEW,
+            # NOTE_EDIT. An ACM owns
             # the commercial renewal and is kept clear of anything that signals
-            # account health, and never edits the account record itself.
+            # account health, and never edits the account record itself. Notes
+            # are a CSM's free text about the client, the sort of place "they
+            # sounded unhappy" gets written down, so they stay on the CSM side.
             # IMPORT_RUN is held but narrowed to contacts only by
             # ``importable_kinds()`` below: the importer writes accounts
             # regardless of ``account.edit``, and an accounts import would
@@ -80,6 +85,7 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.CONTACT_VIEW,
             cap.ACTIVITY_VIEW,
             cap.HEALTH_VIEW,
+            cap.NOTE_VIEW,
             cap.DASHBOARD_VIEW,
             cap.EXPORT_RUN,
         }

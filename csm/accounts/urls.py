@@ -12,6 +12,17 @@ urlpatterns = [
     path("<int:pk>/", views.AccountDetailView.as_view(), name="detail"),
     path("<int:pk>/edit/", views.AccountUpdateView.as_view(), name="edit"),
     path("<int:pk>/delete/", views.AccountDeleteView.as_view(), name="delete"),
+    path("<int:account_pk>/notes/new/", views.NoteCreateView.as_view(), name="note_create"),
+    path(
+        "<int:account_pk>/notes/<int:pk>/edit/",
+        views.NoteUpdateView.as_view(),
+        name="note_edit",
+    ),
+    path(
+        "<int:account_pk>/notes/<int:pk>/delete/",
+        views.NoteDeleteView.as_view(),
+        name="note_delete",
+    ),
     path(
         "custom-fields/", views.CustomFieldListView.as_view(), name="custom_fields"
     ),
