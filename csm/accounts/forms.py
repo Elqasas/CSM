@@ -13,8 +13,10 @@ import datetime as dt
 
 from django import forms
 from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
 from django.db import models
 
+from csm.accounts.logos import fit_logo
 from csm.accounts.models import (
     Account,
     AccountCustomFieldDefinition,
@@ -71,14 +73,22 @@ DATE_FIELDS = (
 
 
 #: The logo is shown at 50x50 everywhere it appears, so anything larger is
-#: bytes nobody sees. PNG only: it is the one common format that keeps a
-#: transparent background, and a brand mark on a white square inside a dark
-#: interface looks broken.
+#: bytes nobody sees. PNG or JPEG, under one size limit: either way the upload
+#: is refitted into a solid square tile (accounts/logos.py), so the format
+#: decides nothing about how it looks.
 LOGO_BOX = 50
 
+#: Extension -> the format Pillow must find inside the file.
+LOGO_FORMATS = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG"}
 
-def validate_png_logo(upload):
-    """Accept a PNG, and prove it is one rather than believing the filename.
+#: The byte limit does not bound the pixels: a flat-colour PNG under 2MB can
+#: decode to gigabytes. The upload is refitted in memory, so the pixel count is
+#: capped too - far above any real logo, far below a decompression bomb.
+LOGO_MAX_SOURCE_PIXELS = 5000 * 5000
+
+
+def validate_logo(upload):
+    """Accept a PNG or JPEG, and prove it is one rather than believing the filename.
 
     An extension check alone is worthless here - anything can be renamed - and
     what matters is what the browser will be asked to render. Pillow is already
@@ -87,8 +97,11 @@ def validate_png_logo(upload):
     from PIL import Image, UnidentifiedImageError
 
     name = (getattr(upload, "name", "") or "").lower()
-    if not name.endswith(".png"):
-        raise forms.ValidationError("The logo must be a PNG file.")
+    expected = next(
+        (fmt for ext, fmt in LOGO_FORMATS.items() if name.endswith(ext)), None
+    )
+    if expected is None:
+        raise forms.ValidationError("The logo must be a PNG or JPEG file.")
 
     limit = getattr(settings, "ACCOUNT_LOGO_MAX_BYTES", 2 * 1024 * 1024)
     if getattr(upload, "size", 0) > limit:
@@ -100,16 +113,24 @@ def validate_png_logo(upload):
     try:
         upload.seek(0)
         image = Image.open(upload)
+        width, height = image.size
         image.verify()
-    except (UnidentifiedImageError, OSError) as exc:
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise forms.ValidationError("That file is not a readable image.") from exc
     finally:
         upload.seek(0)
 
-    if (image.format or "").upper() != "PNG":
+    if width * height > LOGO_MAX_SOURCE_PIXELS:
         raise forms.ValidationError(
-            f"That file is named .png but is actually {image.format or 'unknown'}. "
-            "Re-save it as a PNG."
+            f"That image is {width} by {height} pixels. It is shown at {LOGO_BOX} "
+            f"by {LOGO_BOX}, so anything up to a few hundred pixels square is plenty."
+        )
+
+    actual = (image.format or "").upper()
+    if actual != expected:
+        raise forms.ValidationError(
+            f"That file is named as {expected} but is actually "
+            f"{actual or 'unknown'}. Re-save it as a PNG or JPEG."
         )
 
     return upload
@@ -136,11 +157,12 @@ class AccountForm(forms.ModelForm):
     logo = forms.FileField(
         required=False,
         label="Logo",
-        widget=forms.ClearableFileInput(attrs={"accept": "image/png"}),
+        widget=forms.ClearableFileInput(attrs={"accept": "image/png,image/jpeg"}),
         help_text=(
-            f"PNG only, up to 2MB. Shown at {LOGO_BOX}×{LOGO_BOX} pixels, so a "
-            "square mark with a transparent background works best. Accounts "
-            "without one get their initials instead."
+            f"PNG or JPEG, up to 2MB. Shown at {LOGO_BOX}×{LOGO_BOX} pixels and "
+            "resized to fit automatically; a square PNG with a transparent "
+            "background, 150 pixels or more, looks sharpest. Accounts without "
+            "one get their initials instead."
         ),
     )
 
@@ -276,10 +298,13 @@ class AccountForm(forms.ModelForm):
     def clean_logo(self):
         upload = self.cleaned_data.get("logo")
         # Unchanged on an edit: Django hands back the stored file, which has
-        # already been through this once and has no `size` to re-read.
-        if not upload or not hasattr(upload, "file"):
+        # already been through this once. Only a fresh upload is an
+        # UploadedFile; the stored FieldFile has a `.file` too, so testing for
+        # that re-fitted - and re-saved under a new name - on every edit.
+        if not isinstance(upload, UploadedFile):
             return upload
-        return validate_png_logo(upload)
+        # Stored refitted to the square it is shown in, not as uploaded.
+        return fit_logo(validate_logo(upload), upload.name)
 
     def save(self, commit=True):
         account = super().save(commit=commit)

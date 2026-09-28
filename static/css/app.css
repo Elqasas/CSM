@@ -362,6 +362,12 @@ a.viz-legend-link:hover { background: var(--app-page); color: inherit; }
   justify-content: center;
 }
 
+/* White in both themes, not the page colour. A brand mark is drawn for a light
+   background; on the dark surface its ink disappears. Uploads are stored as
+   solid tiles already (accounts/logos.py), so this only shows behind one that
+   has not been refitted yet. */
+img.acct-logo { background: #fff; }
+
 .acct-logo-initials {
   font-weight: 600;
   font-size: 1rem;
