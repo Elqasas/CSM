@@ -54,17 +54,18 @@
   </div>
 
   <style>
+    /* dPhish navy behind the card, with white dots and lines over it. The
+       same in both themes: a dark field with light marks already works on a
+       dark screen, so there is nothing to lift. The corner glows keep the
+       field from reading as one flat slab. */
     .login-particles {
+      --login-accent: #ffffff;
       position: fixed;
       inset: 0;
       z-index: 0;
-      /* A flat body-background colour is what made the first version of this
-         read as barely-there: pale dots on a plain page have nothing to
-         contrast against. A soft corner-to-corner brand tint gives the same
-         dots somewhere to stand out, in both themes. */
-      background: radial-gradient(circle at 15% 15%, var(--brand-100), transparent 55%),
-                  radial-gradient(circle at 85% 85%, var(--brand-100), transparent 55%),
-                  var(--bs-body-bg);
+      background: radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.08), transparent 55%),
+                  radial-gradient(circle at 85% 85%, rgba(255, 255, 255, 0.06), transparent 55%),
+                  #00005f;
     }
     /* A solid card over a moving background needs to read as clearly as it
        does over a plain one, so it keeps its normal opaque surface rather
@@ -74,11 +75,10 @@
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
     (function () {
-      // Read the brand colour the rest of the app already uses, so the
-      // background matches the theme (light or dark) instead of hard-coding
-      // a colour that would clash with one of them.
-      var brand = getComputedStyle(document.documentElement)
-        .getPropertyValue("--brand-600").trim() || "#4f46e5";
+      // Read the page's accent from CSS, so the light or dark step is the one
+      // defined above instead of a colour hard-coded here for one theme.
+      var brand = getComputedStyle(document.getElementById("particles-js"))
+        .getPropertyValue("--login-accent").trim() || "#ffffff";
 
       if (typeof particlesJS === "undefined") return;
       particlesJS("particles-js", {
@@ -87,11 +87,12 @@
           color: { value: brand },
           shape: { type: "circle" },
           // Brighter and bigger than a first pass: 0.35 opacity on a mostly
-          // flat backdrop read as barely visible, especially in light mode.
+          // flat backdrop read as barely visible, especially in light mode, and
+          // hairline 1.2px links looked faint and thin; 2.4px reads as a line.
           opacity: { value: 0.65, random: true, anim: { enable: true, speed: 0.4, opacity_min: 0.3 } },
-          size: { value: 3.5, random: true },
+          size: { value: 5, random: true },
           line_linked: {
-            enable: true, distance: 150, color: brand, opacity: 0.45, width: 1.2,
+            enable: true, distance: 160, color: brand, opacity: 0.6, width: 2.4,
           },
           move: { enable: true, speed: 1.4, out_mode: "out" },
         },
@@ -103,7 +104,7 @@
             resize: true,
           },
           modes: {
-            grab: { distance: 160, line_linked: { opacity: 0.7 } },
+            grab: { distance: 180, line_linked: { opacity: 0.9 } },
             push: { particles_nb: 4 },
           },
         },
