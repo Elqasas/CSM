@@ -16,6 +16,7 @@ in ``health/signals.py`` and the account rescores after the transaction commits.
 from __future__ import annotations
 
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView, View
@@ -30,6 +31,7 @@ from csm.engagement.forms import (
     TicketForm,
 )
 from csm.engagement.models import AdoptionEvent, CsatResponse, EngagementItem, Ticket
+from csm.integrations.jira import settings as jira
 
 
 class EngagementPanelView(AccountScopedMixin, TemplateView):
@@ -100,6 +102,14 @@ class TicketCreateView(_EngagementCreateView):
         "Zero is green, one to three is yellow, four and above is red."
     )
 
+    def dispatch(self, request, *args, **kwargs):
+        # Once Jira is the source, a hand-entered ticket is one Jira does not
+        # know about: it would never close from there, and it would count
+        # against the client until somebody remembered it.
+        if jira.is_configured():
+            raise Http404("Tickets come from Jira.")
+        return super().dispatch(request, *args, **kwargs)
+
 
 class CsatCreateView(_EngagementCreateView):
     required_capability = cap.CSAT_RECORD
@@ -152,13 +162,15 @@ class TicketCloseView(AccountScopedMixin, View):
 
     Closing is the only edit anybody makes in a hurry, and it is the one that
     moves the score, so it gets a button rather than a round trip through a form.
+    Only a manual ticket closes here: a Jira ticket closes in Jira. Manual ones
+    stay closable after Jira is switched on, or they would count forever.
     """
 
     required_capability = cap.TICKET_EDIT
     account_url_kwarg = "account_pk"
 
     def post(self, request, account_pk, pk):
-        ticket = get_object_or_404(Ticket, pk=pk, account=self.account)
+        ticket = get_object_or_404(Ticket, pk=pk, account=self.account, source="MANUAL")
         if ticket.status != "CLOSED":
             ticket.status = "CLOSED"
             ticket.closed_on = today()
@@ -191,6 +203,9 @@ class EngagementDeleteView(AccountScopedMixin, View):
     def post(self, request, account_pk, what, pk):
         model, _ = self.MODELS[what]
         record = get_object_or_404(model, pk=pk, account=self.account)
+        if getattr(record, "is_synced", False):
+            # Jira owns it; the next sync would only put it back.
+            raise Http404("Synced from Jira.")
         record.delete()
         messages.success(request, "Deleted.")
         # Back to the page the row was deleted from. Without one, to the page

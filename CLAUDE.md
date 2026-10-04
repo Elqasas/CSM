@@ -19,7 +19,7 @@ All commands assume the checked-in virtualenv. On Windows the interpreter is
 ### Tests and lint
 
 ```bash
-.venv/Scripts/python -m pytest                              # full suite, 862 tests
+.venv/Scripts/python -m pytest                              # full suite, 1041 tests
 .venv/Scripts/python -m pytest tests/test_health_engine.py  # one file
 .venv/Scripts/python -m pytest tests/test_access.py::test_only_the_access_package_interprets_role_or_seniority
 .venv/Scripts/python -m pytest -k "csat and stale"          # by name
@@ -51,13 +51,14 @@ warning fails the suite rather than accumulating.
 
 ### Scheduled jobs
 
-All three are idempotent and safe to re-run:
+All are idempotent and safe to re-run:
 
 ```bash
 manage.py recalculate_health      # daily half of the dual trigger
 manage.py generate_tasks          # renewal, quarterly and rollover reminders
 manage.py send_due_notifications  # 07:00 digests, then drain the email outbox
 manage.py send_task_reminders     # every 5 min: the hour/half-hour before a timed task
+manage.py sync_jira [--full]      # every 15 min: JSM issues into tickets; no-op until configured
 ```
 
 **Creating a task notifies nobody.** Only a health alert is announced at the
@@ -500,8 +501,46 @@ Dark mode follows the OS preference with a toggle that overrides it, set in an
 inline script before first paint so a dark viewer gets no white flash. Both
 palettes are validated steps, not an inversion.
 
-Not built: the **integration seams**; `csm/integrations/` is an app shell with
-no models, deliberately deferred.
+Also built: the **Jira Service Management sync** (`csm/integrations/jira/`,
+`/integrations/` for Admin). Read-only and polled, see below.
+
+Not built: Teams and Outlook. The Teams shape is settled in README.md.
+
+### Jira tickets come from JSM organizations
+
+`sync_jira` reads every issue raised under a JSM **Organization** and writes one
+`Ticket` per issue per matched account (`source=JIRA`, `external_key` = issue
+key, `created_by` null). The organization's name *is* the client name, compared
+after case-folding and collapsing whitespace - nothing else. No match, or two
+accounts sharing the name, is reported on `/integrations/` and never guessed.
+Every issue type counts: those named in `JIRA_BUG_ISSUE_TYPES` score as Bug (x3),
+everything else General (x1). Open/closed comes from Jira's *status category*,
+never a status name.
+
+- **Read first, then write in one transaction.** No HTTP inside the
+  transaction; a failed read writes nothing and leaves the cursor, so the next
+  run retries from the same place. Each ticket saves through the model so the
+  `post_save` hook rescores - never `queryset.update()`, which fires no signal.
+- **The sweep.** Incremental runs only see changed issues; an issue deleted in
+  Jira never changes again. Once a day (or `--full`) the open set is read whole
+  and any open Jira ticket missing from it is *closed*, not deleted.
+- **Configured on the page.** An Admin enters the site, account email, API
+  token, projects and bug types on `/integrations/` (`JiraConnection`, one row).
+  Once that row exists it *is* the connection and the `JIRA_*` env vars are
+  ignored - never merged field by field. Read it through
+  `jira/settings.current()`, never `settings.JIRA_*`. The token is Fernet-encrypted
+  with a key derived from `SECRET_KEY` (`integrations/crypto.py`), write-only in
+  the form; rotating `SECRET_KEY` means re-entering it. **Test connection** tries
+  the unsaved form (`/myself` plus field discovery).
+- **Jira only.** When "Use Jira for tickets" is ticked with all three of site,
+  email and token present, manual ticket entry is withdrawn (`jira_enabled` in
+  every template) and synced tickets cannot be closed or deleted in the app.
+  Manual tickets from before stay closable. Project keys and the field id reach
+  JQL, so the form holds them to Jira's formats.
+- **Only `csm/integrations/jira/` touches the API**, over stdlib `urllib`. Tests
+  use `FakeJiraClient`, or `HttpJiraClient` with an injected transport;
+  `config/settings/test.py` blanks the `JIRA_*` settings so a developer's `.env`
+  never reaches a real site.
 
 Open questions are listed at the end of README.md; each blocks a specific
 upcoming phase rather than current work.

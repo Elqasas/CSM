@@ -30,6 +30,11 @@ def send_due_notifications() -> None:
     call_command("send_due_notifications")
 
 
+def sync_jira() -> None:
+    """Pull changed JSM issues into tickets. A no-op until Jira is configured."""
+    call_command("sync_jira")
+
+
 def send_task_reminders() -> None:
     """The hour-before and half-hour-before reminders for timed tasks."""
     call_command("send_task_reminders")

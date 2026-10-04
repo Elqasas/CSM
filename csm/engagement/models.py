@@ -2,8 +2,9 @@
 
 The scoring engine reads open ticket counts, CSAT ratings and adoption events.
 None of the three appears in the spec's data model, so they are defined here.
-All are manual entry in this phase, with source and external-key columns present
-and empty so a future Jira or product-telemetry feed needs no migration.
+CSAT and adoption are manual entry. Tickets come from Jira Service Management
+once it is configured (``csm/integrations/jira``) and are entered by hand only
+until then; a synced ticket carries its issue key and has no author.
 
 EngagementItem exists for a different reason: dashboard card 11 asks for an
 events and digital-content trend over time, which a scalar count cannot produce.
@@ -50,11 +51,25 @@ class Ticket(models.Model):
         max_length=8, choices=TicketSource.choices, default=TicketSource.MANUAL
     )
     external_key = models.CharField(
-        max_length=64, blank=True, default="", help_text="Reserved for the Jira issue key."
+        max_length=64, blank=True, default="", help_text="The Jira issue key, e.g. SUP-123."
+    )
+    external_type = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Jira's own issue type name. ticket_kind is what it scores as.",
+    )
+    external_status = models.CharField(
+        max_length=64, blank=True, default="", help_text="Jira's own status name, for display."
     )
 
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        help_text="Null means the ticket was synced from Jira.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -72,6 +87,15 @@ class Ticket(models.Model):
                 ),
                 name="tickets_closed_on_matches_status",
             ),
+            # One row per issue per account. An issue raised under two JSM
+            # organizations belongs to both clients, so the account is part of
+            # the key; without the index two overlapping sync runs could both
+            # find nothing and both insert.
+            models.UniqueConstraint(
+                fields=["source", "external_key", "account"],
+                condition=~models.Q(external_key=""),
+                name="tickets_one_row_per_issue_per_account",
+            ),
         ]
         indexes = [
             models.Index(
@@ -83,6 +107,11 @@ class Ticket(models.Model):
 
     def __str__(self) -> str:
         return f"[{self.ticket_kind}] {self.title}"
+
+    @property
+    def is_synced(self) -> bool:
+        """Jira owns this row: the app neither closes nor deletes it."""
+        return self.source != TicketSource.MANUAL
 
 
 class CsatResponse(models.Model):

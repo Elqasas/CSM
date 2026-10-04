@@ -43,6 +43,7 @@ IMPORT_RUN = "import.run"
 EXPORT_RUN = "export.run"
 USER_MANAGE = "user.manage"
 CUSTOM_FIELD_MANAGE = "custom_field.manage"
+INTEGRATION_MANAGE = "integration.manage"
 
 ALL = frozenset(
     {
@@ -74,5 +75,6 @@ ALL = frozenset(
         EXPORT_RUN,
         USER_MANAGE,
         CUSTOM_FIELD_MANAGE,
+        INTEGRATION_MANAGE,
     }
 )

@@ -20,7 +20,9 @@ through any view.
               weighted {{ ticket_weight }}
             </span>
           </span>
-          {% if "ticket.edit" in ability.capabilities %}
+          {% if jira_enabled %}
+            <span class="small text-body-secondary">From Jira</span>
+          {% elif "ticket.edit" in ability.capabilities %}
             <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Add a ticket" aria-label="Add a ticket">
@@ -35,15 +37,24 @@ through any view.
                 <span class="badge {% if ticket.ticket_kind == 'BUG' %}text-bg-danger{% else %}text-bg-light{% endif %}">
                   {{ ticket.get_ticket_kind_display }}
                 </span>
+                {% if ticket.external_key %}
+                  {% if jira_browse_base %}
+                    <a class="small font-monospace" href="{{ jira_browse_base }}/{{ ticket.external_key }}"
+                       target="_blank" rel="noopener">{{ ticket.external_key }}</a>
+                  {% else %}
+                    <span class="small font-monospace">{{ ticket.external_key }}</span>
+                  {% endif %}
+                {% endif %}
                 <span class="{% if ticket.status == 'CLOSED' %}text-body-secondary text-decoration-line-through{% endif %}">
                   {{ ticket.title }}
                 </span>
                 <div class="small text-body-secondary">
+                  {% if ticket.external_status %}{{ ticket.external_status }} &middot; {% endif %}
                   opened {{ ticket.opened_on|date:"j M Y" }}
                   {% if ticket.closed_on %} &middot; closed {{ ticket.closed_on|date:"j M Y" }}{% endif %}
                 </div>
               </div>
-              {% if "ticket.edit" in ability.capabilities %}
+              {% if "ticket.edit" in ability.capabilities and not ticket.is_synced %}
                 <div class="d-flex gap-1 flex-shrink-0">
                   {% if ticket.status != "CLOSED" %}
                     <form method="post" action="{% url 'engagement:ticket_close' account.pk ticket.pk %}">
@@ -61,7 +72,11 @@ through any view.
             </li>
           {% empty %}
             <li class="list-group-item text-body-secondary">
-              No tickets. Zero open tickets is green.
+              {% if jira_enabled %}
+                No tickets from Jira for this client. Zero open tickets is green.
+              {% else %}
+                No tickets. Zero open tickets is green.
+              {% endif %}
             </li>
           {% endfor %}
         </ul>

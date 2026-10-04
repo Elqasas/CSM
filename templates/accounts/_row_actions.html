@@ -47,7 +47,7 @@ dialog people dismiss without reading.
           </a>
         </li>
       {% endif %}
-      {% if "ticket.edit" in ability.capabilities %}
+      {% if "ticket.edit" in ability.capabilities and not jira_enabled %}
         <li>
           <a data-modal class="dropdown-item"
              href="{% url 'engagement:ticket_create' account.id %}?next={{ next|urlencode }}">

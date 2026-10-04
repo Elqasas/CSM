@@ -20,3 +20,12 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # Pin the business timezone so day-count boundary tests are deterministic
 # regardless of the machine running them.
 APP_TIME_ZONE = "Africa/Cairo"
+
+# A developer's .env may hold real Jira credentials. Tests that want Jira on
+# set these themselves; nothing here may reach a real site.
+JIRA_BASE_URL = ""
+JIRA_EMAIL = ""
+JIRA_API_TOKEN = ""
+JIRA_PROJECT_KEYS = []
+JIRA_ORGANIZATIONS_FIELD = ""
+JIRA_BUG_ISSUE_TYPES = ["Bug"]

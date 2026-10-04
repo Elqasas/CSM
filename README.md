@@ -389,12 +389,28 @@ The interface follows the operating system's light or dark preference and has a
 toggle that overrides it. The chart palette ships validated steps for both, so
 dark mode is a selected design rather than an inverted one.
 
+**Jira Service Management** feeds tickets. Every 15 minutes `sync_jira` reads
+the issues raised under each JSM Organization and writes them as tickets on the
+client of the same name (case and spacing ignored). A Bug scores three in Open
+Tickets and every other issue type one. Once Jira is configured, tickets are no
+longer entered by hand, and synced ones close in Jira, not here. Organizations
+that match no client, or more than one, are listed on `/integrations/` (Admin)
+rather than guessed.
+
+To connect it, an Admin opens **Settings → Integrations**, enters the Jira site,
+the account email and an API token (stored encrypted, never shown again),
+presses **Test connection**, then ticks **Use Jira for tickets** and saves. Run
+`manage.py sync_jira --full` once afterwards for the first complete read. The
+`JIRA_*` variables in `.env.example` still work for a deployment that prefers
+them, until the page is first saved.
+
 Not built yet:
 
-- **Integration seams**: the provider interfaces and `IntegrationLink`. The event
-  bus they will subscribe to already exists. Deliberately deferred; the shape
-  they will take is settled under
+- **Teams and Outlook.** The event bus they will subscribe to already exists,
+  and the shape Teams will take is settled under
   [Meetings, tasks and the Teams integration](#meetings-tasks-and-the-teams-integration).
+- **Pushing to Jira.** The sync is read-only; Internal tasks are not yet sent
+  out as issues (`Task.jira_ticket_id` stays reserved).
 
 ## Open questions
 
