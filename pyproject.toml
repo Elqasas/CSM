@@ -1,7 +1,7 @@
 [project]
 name = "csm-platform"
 version = "0.1.0"
-description = "dPhish Customer Health & Account Management Platform"
+description = "Bousla - dPhish customer health & account management platform"
 requires-python = ">=3.12"
 dependencies = [
     "Django>=5.1,<6.0",

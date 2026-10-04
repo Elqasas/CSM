@@ -1,4 +1,4 @@
-# Customer Health & Account Management Platform
+# Bousla — Customer Health & Account Management Platform
 
 Internal platform for managing the health and relationships of dPhish's client
 portfolio. It centralises account data, scores account health automatically from

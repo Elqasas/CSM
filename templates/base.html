@@ -3,15 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Customer Health{% endblock %} &middot; dPhish</title>
-    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <title>{% block title %}Bousla{% endblock %} &middot; dPhish</title>
+    {% comment %}
+    A new filename rather than a new picture under the old one: browsers keep a
+    tab icon long after its file changes, through a hard refresh in some cases.
+    {% endcomment %}
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/bousla-icon.svg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap">
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@400;600&family=Readex+Pro:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
     {% comment %}
     Set before the body paints, so a viewer who chose dark does not get a white
     flash first. Inline and tiny for the same reason: a deferred script would
@@ -36,8 +41,12 @@
     {% if user.is_authenticated %}
       <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
         <div class="container-fluid">
-          <a class="navbar-brand fw-semibold" href="{% url 'dashboard:index' %}">
-            <i class="bi bi-activity"></i> Customer Health
+          <a class="navbar-brand" href="{% url 'dashboard:index' %}" title="Bousla home">
+            {% include "core/_brand_mark.html" %}
+            <span class="brand-text">
+              <span class="wordmark">BOUSLA</span>
+              <span class="brand-tagline">Customer health for dPhish accounts</span>
+            </span>
           </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                   data-bs-target="#mainnav" aria-controls="mainnav" aria-expanded="false"

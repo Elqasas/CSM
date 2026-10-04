@@ -4,20 +4,31 @@
 
 {% block content %}
   {% comment %}
-  A fixed, full-viewport canvas behind the sign-in card. z-index 0 rather than
-  a negative one: a negative z-index can end up behind the page's own opaque
-  background depending on the stacking context, which is a fragile way to
-  guarantee "behind everything but visible". Giving the card its own stacking
-  context at z-index 1 is the reliable version of the same idea.
+  "Night chart": a sea chart at night behind the sign-in. A fixed canvas draws a
+  faint latitude/longitude grid, a few dim stars and a large bearing ring that
+  turns slowly; its needle swings from north to settle on the sign-in card.
+  The canvas is z-index 0 rather than negative - a negative z-index can end up
+  behind the page's own opaque background depending on the stacking context -
+  and the content gets its own stacking context at z-index 1 above it.
   {% endcomment %}
-  <div id="particles-js" class="login-particles" aria-hidden="true"></div>
+  <canvas id="login-chart" class="login-chart" aria-hidden="true"></canvas>
 
-  <div class="row justify-content-center position-relative" style="z-index: 1;">
-    <div class="col-12 col-sm-9 col-md-6 col-lg-4">
-      <div class="card shadow-sm mt-5 login-card">
+  <div class="login-stage row align-items-center justify-content-center g-4 position-relative">
+    <div class="col-12 col-lg-5 col-xl-4 offset-xl-1 login-brand" id="login-brand">
+      <div class="login-brand-mark">{% include "core/_brand_mark.html" %}</div>
+      <div class="login-brand-name">
+        <span class="wordmark">BOUSLA</span>
+        <span class="login-brand-ar" lang="ar" dir="rtl">بوصلة</span>
+      </div>
+      <p class="login-brand-line">Know where every account is heading.</p>
+      <p class="login-brand-sub">Customer health for dPhish accounts</p>
+    </div>
+
+    <div class="col-12 col-sm-9 col-md-6 col-lg-4 col-xl-4">
+      <div class="card login-card" id="login-card">
         <div class="card-body p-4">
-          <h1 class="h4 mb-1">Customer Health</h1>
-          <p class="text-body-secondary small mb-4">dPhish internal platform</p>
+          <h1 class="h5 mb-1">Sign in</h1>
+          <p class="text-body-secondary small mb-4">Use your dPhish email address.</p>
 
           {% if form.non_field_errors %}
             <div class="alert alert-danger py-2">
@@ -54,62 +65,271 @@
   </div>
 
   <style>
-    /* dPhish navy behind the card, with white dots and lines over it. The
-       same in both themes: a dark field with light marks already works on a
-       dark screen, so there is nothing to lift. The corner glows keep the
-       field from reading as one flat slab. */
-    .login-particles {
-      --login-accent: #ffffff;
+    /* dPhish navy, the same in both themes: a dark field with light marks
+       already works on a dark screen. A lapis glow sits behind the compass so
+       the field is not one flat slab. Sand is the colour of the small type on
+       navy - warmer than white, and the light half of "Lapis & Sand". */
+    .login-chart {
+      --chart-navy: #00005f;
+      --chart-line: 223, 229, 253;
+      --chart-glow: 91, 119, 234;
       position: fixed;
       inset: 0;
+      width: 100%;
+      height: 100%;
       z-index: 0;
-      background: radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.08), transparent 55%),
-                  radial-gradient(circle at 85% 85%, rgba(255, 255, 255, 0.06), transparent 55%),
-                  #00005f;
+      background: var(--chart-navy);
     }
-    /* A solid card over a moving background needs to read as clearly as it
-       does over a plain one, so it keeps its normal opaque surface rather
-       than the reference site's frosted-glass look. */
-    .login-card { position: relative; }
+    .login-stage { z-index: 1; min-height: calc(100vh - 3rem); }
+
+    /* A navy halo on every line of brand text, so the ring, ticks and stars
+       passing behind a letter never cut into it. Several soft layers rather
+       than one hard stroke: a stroke changes the letterforms, a halo only
+       clears the ground around them. */
+    .login-brand {
+      color: #ffffff;
+      text-shadow: 0 0 2px #00005f, 0 0 8px #00005f, 0 0 18px #00005f, 0 0 32px rgba(0, 0, 95, 0.9);
+    }
+    .login-brand-name .wordmark {
+      -webkit-text-stroke: 1px rgba(185, 197, 250, 0.55);
+      paint-order: stroke fill;
+    }
+    .login-brand-mark .brand-mark { width: 4.5rem; height: 4.5rem; }
+    /* On navy the tile keeps the light-mode lapis in both themes; the dark
+       theme's lifted step is for a dark *surface*, and the cut-outs here are
+       always white. */
+    .login-brand .brand-mark-tile { fill: #2f4ccf; }
+    .login-brand .brand-mark-ring { stroke: #ffffff; }
+    .login-brand .brand-mark-north,
+    .login-brand .brand-mark-south { fill: #ffffff; }
+    .login-brand-name {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1.25rem;
+      font-family: var(--font-display);
+    }
+    .login-brand-name .wordmark { font-size: clamp(2.25rem, 4vw, 3.25rem); letter-spacing: 0.12em; line-height: 1; }
+    .login-brand-ar { font-size: clamp(1.5rem, 2.6vw, 2.1rem); color: #b9c5fa; line-height: 1; }
+    .login-brand-line {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 400;
+      margin: 1rem 0 0.35rem;
+      max-width: 26ch;
+      text-wrap: balance;
+    }
+    .login-brand-sub {
+      color: #e9e4d6;
+      opacity: 0.75;
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    /* A solid card over a moving background reads as clearly as it does over a
+       plain one, so it keeps its normal opaque surface - no frosted glass. */
+    .login-card {
+      position: relative;
+      border: 0;
+      box-shadow: 0 24px 48px -12px rgba(0, 0, 40, 0.55);
+    }
+
+    /* Narrow screens: the brand becomes a compact header above the card. */
+    @media (max-width: 991.98px) {
+      .login-stage { min-height: 0; padding-top: 1rem; }
+      .login-brand { text-align: center; }
+      .login-brand-mark .brand-mark { width: 3.25rem; height: 3.25rem; }
+      .login-brand-name { justify-content: center; margin-top: 0.75rem; }
+      .login-brand-line { margin-left: auto; margin-right: auto; font-size: 1.05rem; }
+    }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
     (function () {
-      // Read the page's accent from CSS, so the light or dark step is the one
-      // defined above instead of a colour hard-coded here for one theme.
-      var brand = getComputedStyle(document.getElementById("particles-js"))
-        .getPropertyValue("--login-accent").trim() || "#ffffff";
+      var canvas = document.getElementById("login-chart");
+      var ctx = canvas.getContext && canvas.getContext("2d");
+      if (!ctx) return;
 
-      if (typeof particlesJS === "undefined") return;
-      particlesJS("particles-js", {
-        particles: {
-          number: { value: 110, density: { enable: true, value_area: 800 } },
-          color: { value: brand },
-          shape: { type: "circle" },
-          // Brighter and bigger than a first pass: 0.35 opacity on a mostly
-          // flat backdrop read as barely visible, especially in light mode, and
-          // hairline 1.2px links looked faint and thin; 2.4px reads as a line.
-          opacity: { value: 0.65, random: true, anim: { enable: true, speed: 0.4, opacity_min: 0.3 } },
-          size: { value: 5, random: true },
-          line_linked: {
-            enable: true, distance: 160, color: brand, opacity: 0.6, width: 2.4,
-          },
-          move: { enable: true, speed: 1.4, out_mode: "out" },
-        },
-        interactivity: {
-          detect_on: "canvas",
-          events: {
-            onhover: { enable: true, mode: "grab" },
-            onclick: { enable: true, mode: "push" },
-            resize: true,
-          },
-          modes: {
-            grab: { distance: 180, line_linked: { opacity: 0.9 } },
-            push: { particles_nb: 4 },
-          },
-        },
-        retina_detect: true,
-      });
+      var css = getComputedStyle(canvas);
+      var LINE = css.getPropertyValue("--chart-line").trim() || "223, 229, 253";
+      var GLOW = css.getPropertyValue("--chart-glow").trim() || "91, 119, 234";
+      var NAVY = css.getPropertyValue("--chart-navy").trim() || "#00005f";
+      var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      var w = 0, h = 0, dpr = 1, stars = [];
+      var brand = document.getElementById("login-brand");
+      var card = document.getElementById("login-card");
+
+      function rgba(rgb, a) { return "rgba(" + rgb + "," + a + ")"; }
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = window.innerWidth; h = window.innerHeight;
+        canvas.width = w * dpr; canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Stars are re-scattered on resize; a fixed count per area keeps a
+        // phone from looking crowded and a wide monitor from looking empty.
+        var n = Math.round((w * h) / 22000);
+        stars = [];
+        for (var i = 0; i < n; i++) {
+          stars.push({ x: Math.random() * w, y: Math.random() * h,
+                       r: Math.random() * 1.3 + 0.4, p: Math.random() * Math.PI * 2 });
+        }
+      }
+
+      // The compass sits behind the brand panel on a wide screen and high in
+      // the middle on a narrow one, where the panel is a header.
+      function geometry() {
+        var wide = w >= 992;
+        var cx, cy, r;
+        if (wide) {
+          var b = brand.getBoundingClientRect();
+          // Centred below the text, not behind it: the hub and the needle are
+          // the brightest marks on the canvas and would sit on the wordmark.
+          r = Math.min(w, h) * 0.42;
+          cx = b.left + b.width * 0.35; cy = b.bottom + r * 0.3;
+        } else {
+          r = Math.min(w * 0.62, 320);
+          cx = w / 2;
+          cy = brand.getBoundingClientRect().bottom + r * 0.25;
+        }
+        var c = card.getBoundingClientRect();
+        var target = Math.atan2(c.top + c.height / 2 - cy, c.left + c.width / 2 - cx);
+        return { cx: cx, cy: cy, r: r, target: target };
+      }
+
+      function grid() {
+        // A chart's graticule: every line faint, every fourth a little less so.
+        var step = 72;
+        ctx.lineWidth = 1;
+        for (var x = (w / 2) % step, i = 0; x < w; x += step, i++) {
+          ctx.strokeStyle = rgba(LINE, i % 4 === 0 ? 0.07 : 0.035);
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (var y = (h / 2) % step, j = 0; y < h; y += step, j++) {
+          ctx.strokeStyle = rgba(LINE, j % 4 === 0 ? 0.07 : 0.035);
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+      }
+
+      function rose(g, spin) {
+        var cx = g.cx, cy = g.cy, r = g.r;
+        var glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.25);
+        glow.addColorStop(0, rgba(GLOW, 0.32));
+        glow.addColorStop(1, rgba(GLOW, 0));
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.25, 0, Math.PI * 2); ctx.fill();
+
+        ctx.strokeStyle = rgba(LINE, 0.22); ctx.lineWidth = 1.2;
+        [1, 0.86, 0.5].forEach(function (k) {
+          ctx.beginPath(); ctx.arc(cx, cy, r * k, 0, Math.PI * 2); ctx.stroke();
+        });
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(spin);
+        // Degree ticks: every 2 degrees, longer every 10, labelled every 30.
+        for (var d = 0; d < 360; d += 2) {
+          var a = (d - 90) * Math.PI / 180;
+          var major = d % 10 === 0;
+          var len = major ? r * 0.06 : r * 0.03;
+          ctx.strokeStyle = rgba(LINE, major ? 0.42 : 0.2);
+          ctx.lineWidth = major ? 1.4 : 1;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+          ctx.lineTo(Math.cos(a) * (r - len), Math.sin(a) * (r - len));
+          ctx.stroke();
+        }
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        var labelSize = Math.max(10, Math.round(r * 0.035));
+        for (var b = 0; b < 360; b += 30) {
+          var cardinal = { 0: "N", 90: "E", 180: "S", 270: "W" }[b];
+          var ang = (b - 90) * Math.PI / 180;
+          var rr = r * (cardinal ? 0.77 : 0.8);
+          ctx.fillStyle = rgba(LINE, cardinal ? 0.7 : 0.38);
+          ctx.font = (cardinal ? "600 " + labelSize * 1.6 : "500 " + labelSize) + "px 'Readex Pro', system-ui, sans-serif";
+          ctx.fillText(cardinal || String(b), Math.cos(ang) * rr, Math.sin(ang) * rr);
+        }
+        // The rose's four long points and four short ones.
+        ctx.fillStyle = rgba(LINE, 0.06); ctx.strokeStyle = rgba(LINE, 0.18); ctx.lineWidth = 1;
+        for (var p = 0; p < 8; p++) {
+          var pa = p * Math.PI / 4 - Math.PI / 2;
+          var reach = p % 2 === 0 ? r * 0.66 : r * 0.4;
+          var side = r * 0.06;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(pa) * reach, Math.sin(pa) * reach);
+          ctx.lineTo(Math.cos(pa + Math.PI / 2) * side, Math.sin(pa + Math.PI / 2) * side);
+          ctx.lineTo(0, 0);
+          ctx.lineTo(Math.cos(pa - Math.PI / 2) * side, Math.sin(pa - Math.PI / 2) * side);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // A soft navy pool under the brand text, so the rose fades out where
+      // the letters are rather than running through them.
+      function scrim() {
+        var b = brand.getBoundingClientRect();
+        var x = b.left + b.width / 2, y = b.top + b.height / 2;
+        var rad = Math.max(b.width, b.height) * 0.75;
+        var pool = ctx.createRadialGradient(x, y, 0, x, y, rad);
+        pool.addColorStop(0, "rgba(0, 0, 95, 0.75)");
+        pool.addColorStop(0.6, "rgba(0, 0, 95, 0.45)");
+        pool.addColorStop(1, "rgba(0, 0, 95, 0)");
+        ctx.fillStyle = pool;
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+      }
+
+      function needle(g, angle) {
+        // The needle does not turn with the rose: it is the one thing on the
+        // page that points somewhere on purpose - at the sign-in card.
+        var len = g.r * 0.42, half = g.r * 0.04;
+        ctx.save();
+        ctx.translate(g.cx, g.cy);
+        ctx.rotate(angle);
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(0, half); ctx.lineTo(0, -half); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.beginPath(); ctx.moveTo(-len * 0.75, 0); ctx.lineTo(0, half); ctx.lineTo(0, -half); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = NAVY;
+        ctx.beginPath(); ctx.arc(0, 0, half * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+      }
+
+      // A damped swing: starts at north, overshoots, settles on the card.
+      var NORTH = -Math.PI / 2, start = performance.now();
+      function settle(target, t) {
+        var delta = target - NORTH;
+        var e = Math.exp(-t * 2.2) * Math.cos(t * 6.5);
+        return target - delta * e;
+      }
+
+      function frame(now) {
+        var t = (now - start) / 1000;
+        var g = geometry();
+        ctx.fillStyle = NAVY; ctx.fillRect(0, 0, w, h);
+        grid();
+        for (var i = 0; i < stars.length; i++) {
+          var s = stars[i];
+          var a = still ? 0.45 : 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.8 + s.p));
+          ctx.fillStyle = "rgba(255,255,255," + a + ")";
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        }
+        rose(g, still ? 0 : t * 0.006);
+        scrim();
+        needle(g, still ? g.target : settle(g.target, t));
+        if (!still) requestAnimationFrame(frame);
+      }
+
+      resize();
+      window.addEventListener("resize", function () { resize(); if (still) frame(performance.now()); });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () { if (still) frame(performance.now()); });
+      }
+      requestAnimationFrame(frame);
     })();
   </script>
 {% endblock %}

@@ -91,6 +91,7 @@ TEMPLATES = [
                 "csm.core.modal.base_template",
                 "csm.notifications.views.unread_count",
                 "csm.integrations.views.jira_context",
+                "csm.core.assets.asset_version",
             ],
         },
     },

@@ -1,0 +1,14 @@
+{% comment %}
+The Bousla mark: a compass needle in a ring, drawn in the brand colour so it
+follows the theme. Inline rather than an <img> because an image cannot read the
+page's custom properties, and the dark mode needs its own step. The size and
+fill attributes are the fallback for a page whose stylesheet has not loaded (or
+is a stale cached copy): without them an SVG fills its container in black. The
+stylesheet's rules outrank presentation attributes, so the theme still wins.
+{% endcomment %}
+<svg class="brand-mark" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true" focusable="false">
+  <rect width="32" height="32" rx="8" class="brand-mark-tile" fill="#2f4ccf"/>
+  <circle cx="16" cy="16" r="11" fill="none" class="brand-mark-ring" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.6"/>
+  <path d="M23.5 8.5 L18.4 18.4 L13.6 13.6 Z" class="brand-mark-north" fill="#ffffff"/>
+  <path d="M8.5 23.5 L13.6 13.6 L18.4 18.4 Z" class="brand-mark-south" fill="#ffffff" fill-opacity="0.5"/>
+</svg>
