@@ -8,4 +8,5 @@ app_name = "integrations"
 
 urlpatterns = [
     path("", views.IntegrationStatusView.as_view(), name="status"),
+    path("microsoft/", views.TeamsConnectionView.as_view(), name="teams"),
 ]

@@ -14,7 +14,8 @@ from urllib.parse import urlsplit
 from django import forms
 
 from csm.integrations.jira.settings import SOURCE_PAGE, JiraConfig, split_list
-from csm.integrations.models import JiraConnection
+from csm.integrations.models import JiraConnection, TeamsConnection
+from csm.integrations.teams.settings import TeamsConfig
 
 PROJECT_KEY = re.compile(r"^[A-Z][A-Z0-9_]{0,49}$")
 CUSTOM_FIELD = re.compile(r"^customfield_\d+$")
@@ -154,6 +155,107 @@ class JiraConnectionForm(forms.ModelForm):
         typed = self.cleaned_data.get("api_token")
         if typed:
             connection.api_token = typed
+        connection.updated_by = user
+        if commit:
+            connection.save()
+        return connection
+
+
+GUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+TENANT_DOMAIN = re.compile(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")
+
+
+class TeamsConnectionForm(forms.ModelForm):
+    """The Entra ID app registration, as an administrator enters it.
+
+    The tenant reaches a URL and the client id a token request, so both are
+    held to Microsoft's formats. The secret is write-only, like Jira's token.
+    """
+
+    tenant_id = forms.CharField(
+        label="Directory (tenant) ID",
+        required=False,
+        help_text="From the app registration's Overview page, or the tenant's primary domain.",
+    )
+    client_id = forms.CharField(
+        label="Application (client) ID",
+        required=False,
+        help_text="From the same Overview page.",
+    )
+    client_secret = forms.CharField(
+        label="Client secret",
+        required=False,
+        strip=True,
+        widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}),
+        help_text="The secret's Value (not its ID), from Certificates & secrets.",
+    )
+    count_attendance = forms.BooleanField(
+        label="Count attended Teams meetings towards health",
+        required=False,
+        help_text=(
+            "When a Teams meeting's attendance report shows a client contact - "
+            "matched by the email stored on the contact - joined, log a Meeting "
+            "activity. Invited but absent never counts."
+        ),
+    )
+    enabled = forms.BooleanField(
+        label="Read Outlook calendars",
+        required=False,
+        help_text="Each person's meetings then appear on their own calendar, every 15 minutes.",
+    )
+
+    class Meta:
+        model = TeamsConnection
+        fields = ["tenant_id", "client_id", "client_secret", "count_attendance", "enabled"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            css = "form-check-input" if isinstance(field, forms.BooleanField) else "form-control"
+            field.widget.attrs.setdefault("class", css)
+
+    def clean_tenant_id(self) -> str:
+        value = self.cleaned_data["tenant_id"].strip()
+        if value and not (GUID.match(value) or TENANT_DOMAIN.match(value)):
+            raise forms.ValidationError(
+                "A tenant ID looks like 72f988bf-86f1-41af-91ab-2d7cd011db47, or a domain such as dphish.com."
+            )
+        return value
+
+    def clean_client_id(self) -> str:
+        value = self.cleaned_data["client_id"].strip()
+        if value and not GUID.match(value):
+            raise forms.ValidationError("A client ID looks like 72f988bf-86f1-41af-91ab-2d7cd011db47.")
+        return value
+
+    def secret(self) -> str:
+        return self.cleaned_data.get("client_secret") or self.instance.client_secret
+
+    def clean(self):
+        cleaned = super().clean()
+        config = self.config()
+        if cleaned.get("enabled") and config.missing:
+            raise forms.ValidationError(
+                "Microsoft 365 can only be switched on with a tenant ID, a client ID "
+                "and a secret. Missing: " + ", ".join(config.missing) + "."
+            )
+        return cleaned
+
+    def config(self) -> TeamsConfig:
+        data = self.cleaned_data
+        return TeamsConfig(
+            tenant_id=data.get("tenant_id", ""),
+            client_id=data.get("client_id", ""),
+            client_secret=self.secret(),
+            count_attendance=bool(data.get("count_attendance")),
+            enabled=bool(data.get("enabled")),
+        )
+
+    def save(self, commit=True, *, user=None):
+        connection = super().save(commit=False)
+        typed = self.cleaned_data.get("client_secret")
+        if typed:
+            connection.client_secret = typed
         connection.updated_by = user
         if commit:
             connection.save()

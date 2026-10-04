@@ -1,0 +1,12 @@
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'jira' %}active{% endif %}" href="{% url 'integrations:status' %}">
+      Jira Service Management
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'teams' %}active{% endif %}" href="{% url 'integrations:teams' %}">
+      Microsoft 365
+    </a>
+  </li>
+</ul>

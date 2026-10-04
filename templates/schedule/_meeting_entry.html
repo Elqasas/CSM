@@ -1,0 +1,13 @@
+{% comment %}
+One Outlook meeting on a line, for the month grid and the all-day row. Marked by
+an icon and the word "Teams" or "Outlook" as well as its colour, so colour is
+never the only thing that says where it came from.
+{% endcomment %}
+<div class="cal-entry is-meeting{% if meeting.is_private %} is-private{% endif %}">
+  {% if meeting.web_link %}<a class="cal-entry-link" href="{{ meeting.web_link }}" target="_blank" rel="noopener">{% endif %}
+  <i class="bi {% if meeting.is_teams %}bi-microsoft-teams{% else %}bi-calendar-event{% endif %}" aria-hidden="true"></i>
+  {% if not meeting.is_all_day %}<span class="cal-time">{{ meeting.start_time|time:"H:i" }}</span>{% endif %}
+  <span class="cal-title">{{ meeting.title }}</span>
+  <span class="cal-kind">{% if meeting.clients %}{{ meeting.clients|join:", " }}{% elif meeting.is_teams %}Teams{% else %}Outlook{% endif %}</span>
+  {% if meeting.web_link %}</a>{% endif %}
+</div>

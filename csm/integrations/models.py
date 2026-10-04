@@ -88,3 +88,56 @@ class JiraConnection(models.Model):
     @property
     def has_token(self) -> bool:
         return bool(self.api_token_encrypted)
+
+
+class TeamsConnection(models.Model):
+    """The Microsoft 365 tenant this platform reads calendars from.
+
+    One row, entered by an administrator. An Entra ID app registration with
+    *application* permissions reads the calendar of every platform user whose
+    email is a mailbox in the tenant - nobody signs in with Microsoft. The client
+    secret is stored encrypted (``integrations/crypto.py``) and never rendered
+    back to the page.
+    """
+
+    enabled = models.BooleanField(
+        default=False, help_text="Read Outlook calendars into the platform calendar."
+    )
+    tenant_id = models.CharField(max_length=64, blank=True, default="")
+    client_id = models.CharField(max_length=64, blank=True, default="")
+    client_secret_encrypted = models.TextField(blank=True, default="")
+    count_attendance = models.BooleanField(
+        default=True,
+        help_text=(
+            "Log a Meeting activity when a Teams meeting's attendance report "
+            "shows a client contact joined."
+        ),
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        db_table = "integration_teams_connection"
+
+    def __str__(self) -> str:
+        return self.tenant_id or "Microsoft 365 (not set)"
+
+    @property
+    def client_secret(self) -> str:
+        from csm.integrations.crypto import decrypt
+
+        return decrypt(self.client_secret_encrypted)
+
+    @client_secret.setter
+    def client_secret(self, value: str) -> None:
+        from csm.integrations.crypto import encrypt
+
+        self.client_secret_encrypted = encrypt(value) if value else ""
+
+    @property
+    def has_secret(self) -> bool:
+        return bool(self.client_secret_encrypted)

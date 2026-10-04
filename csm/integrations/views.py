@@ -24,11 +24,14 @@ from csm.core.access import capabilities as cap
 from csm.core.enums import IntegrationProvider, TicketSource
 from csm.core.views import CapabilityRequiredMixin
 from csm.engagement.models import Ticket
-from csm.integrations.forms import JiraConnectionForm
+from csm.integrations.forms import JiraConnectionForm, TeamsConnectionForm
 from csm.integrations.jira import settings as jira
 from csm.integrations.jira.client import JiraError
 from csm.integrations.jira.sync import run
-from csm.integrations.models import JiraConnection, SyncState
+from csm.integrations.models import JiraConnection, SyncState, TeamsConnection
+from csm.integrations.teams import settings as teams
+from csm.integrations.teams.client import GraphError, GraphNotFound
+from csm.integrations.teams.sync import run as run_teams
 
 
 def jira_context(request):
@@ -138,3 +141,106 @@ class IntegrationStatusView(CapabilityRequiredMixin, TemplateView):
                 f"{report['updated']} changed.",
             )
         return redirect("integrations:status")
+
+
+class TeamsConnectionView(CapabilityRequiredMixin, TemplateView):
+    """Connect Microsoft 365: Outlook calendars in, Teams attendance counted.
+
+    Same three buttons as Jira. **Test** signs in with the unsaved form and
+    reads the administrator's own calendar for today - the one mailbox the page
+    knows should exist.
+    """
+
+    required_capability = cap.INTEGRATION_MANAGE
+    template_name = "integrations/teams.html"
+
+    def _form(self, data=None) -> TeamsConnectionForm:
+        connection = TeamsConnection.objects.first()
+        if connection is not None:
+            return TeamsConnectionForm(data, instance=connection)
+        return TeamsConnectionForm(data, initial={"count_attendance": True})
+
+    def get_context_data(self, form=None, **kwargs):
+        from csm.meetings.models import Attendance, Meeting
+
+        context = super().get_context_data(**kwargs)
+        config = teams.current()
+        connection = TeamsConnection.objects.first()
+        context["nav"] = "settings"
+        context["form"] = form or self._form()
+        context["config"] = config
+        context["configured"] = config.is_configured
+        context["has_secret"] = bool(connection and connection.has_secret)
+        context["state"] = SyncState.objects.filter(provider=IntegrationProvider.TEAMS).first()
+        context["meeting_count"] = Meeting.objects.count()
+        context["counted_count"] = Meeting.objects.filter(attendance=Attendance.COUNTED).count()
+        context["no_show_count"] = Meeting.objects.filter(attendance=Attendance.NO_SHOW).count()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get("action", "save")
+        if action == "sync":
+            return self._sync(request)
+        if action == "forget_secret":
+            connection = TeamsConnection.objects.first()
+            if connection is not None:
+                connection.client_secret = ""
+                connection.enabled = False
+                connection.updated_by = request.user
+                connection.save()
+                messages.success(request, "Secret removed. Microsoft 365 is switched off.")
+            return redirect("integrations:teams")
+
+        form = self._form(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+
+        if action == "test":
+            self._test(request, form)
+            return self.render_to_response(self.get_context_data(form=form))
+
+        form.save(user=request.user)
+        if form.cleaned_data["enabled"]:
+            messages.success(
+                request, "Saved. Outlook calendars are read every 15 minutes."
+            )
+        else:
+            messages.success(request, "Saved. Microsoft 365 is off.")
+        return redirect("integrations:teams")
+
+    def _test(self, request, form) -> None:
+        try:
+            events = teams.client_for(form.config()).check(request.user.email)
+        except ImproperlyConfigured as exc:
+            messages.error(request, str(exc))
+        except GraphNotFound:
+            messages.error(
+                request,
+                f"Signed in, but {request.user.email} has no Microsoft 365 mailbox to read. "
+                "Calendars are matched to platform users by email address.",
+            )
+        except GraphError as exc:
+            messages.error(request, f"Test failed: {exc}")
+        else:
+            messages.success(
+                request,
+                f"Connected. Read {events} event{'s' if events != 1 else ''} around now "
+                f"from {request.user.email}'s calendar. Nothing has been saved yet.",
+            )
+
+    def _sync(self, request):
+        config = teams.current()
+        if not config.is_configured:
+            messages.error(request, "Microsoft 365 is not switched on.")
+            return redirect("integrations:teams")
+        try:
+            report = run_teams(teams.get_client(), count_attendance=config.count_attendance)
+        except (GraphError, ImproperlyConfigured) as exc:
+            messages.error(request, f"Sync failed: {exc}")
+        else:
+            messages.success(
+                request,
+                f"Read {report['calendars_read']} calendars: {report['meetings']} meetings, "
+                f"{report['attendance']['counted']} newly counted.",
+            )
+        return redirect("integrations:teams")

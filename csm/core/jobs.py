@@ -38,3 +38,8 @@ def sync_jira() -> None:
 def send_task_reminders() -> None:
     """The hour-before and half-hour-before reminders for timed tasks."""
     call_command("send_task_reminders")
+
+
+def sync_teams() -> None:
+    """Read Outlook calendars and Teams attendance. A no-op until Microsoft 365 is connected."""
+    call_command("sync_teams")

@@ -1,0 +1,49 @@
+{% comment %}
+One block in the hours of a week or day. Expects `placed`, from
+`grid.lay_out()`: its kind, its item, and where it sits as percentages.
+{% endcomment %}
+{% with item=placed.item %}
+  {% if placed.kind == "meeting" %}
+    <div class="cal-block is-meeting{% if item.has_ended %} is-past{% endif %}{% if placed.is_short %} is-short{% endif %}"
+         style="top: {{ placed.top|stringformat:'.4f' }}%; height: {{ placed.height|stringformat:'.4f' }}%; left: {{ placed.left|stringformat:'.4f' }}%; width: {{ placed.width|stringformat:'.4f' }}%"
+         title="{{ item.title }} - {{ item.start_time|time:'H:i' }} to {{ item.end_time|time:'H:i' }}{% if item.clients %} - {{ item.clients|join:', ' }}{% endif %}">
+      <div class="cal-block-inner">
+        <a class="cal-block-title" {% if item.web_link %}href="{{ item.web_link }}" target="_blank" rel="noopener"{% endif %}>
+          <i class="bi {% if item.is_teams %}bi-microsoft-teams{% else %}bi-calendar-event{% endif %}" aria-hidden="true"></i>
+          <span class="visually-hidden">{% if item.is_teams %}Teams meeting:{% else %}Outlook event:{% endif %}</span>
+          {{ item.title }}
+        </a>
+        <span class="cal-block-meta">
+          <span class="cal-time">{{ item.start_time|time:"H:i" }}-{{ item.end_time|time:"H:i" }}</span>
+          {% if item.clients %}&middot; {{ item.clients|join:", " }}{% endif %}
+          {% if item.attendance == "COUNTED" %}
+            <span class="cal-attended"><i class="bi bi-check2-circle" aria-hidden="true"></i> Client joined</span>
+          {% elif item.attendance == "NO_SHOW" %}
+            &middot; No client joined
+          {% endif %}
+        </span>
+        {% if item.is_teams and item.join_url and not item.has_ended and not placed.is_short %}
+          <a class="cal-join small" href="{{ item.join_url }}" target="_blank" rel="noopener">Join</a>
+        {% endif %}
+      </div>
+    </div>
+  {% elif placed.kind == "task" %}
+    <div class="cal-block is-planned prio-{{ item.priority|lower }}{% if placed.is_short %} is-short{% endif %}"
+         style="top: {{ placed.top|stringformat:'.4f' }}%; height: {{ placed.height|stringformat:'.4f' }}%; left: {{ placed.left|stringformat:'.4f' }}%; width: {{ placed.width|stringformat:'.4f' }}%"
+         title="{{ item.title }} - {{ item.due_time|time:'H:i' }} - {{ item.account.client_name }}">
+      <a class="cal-block-inner d-block" href="{{ item.get_edit_url }}">
+        <span class="cal-block-title">{{ item.title }}</span>
+        <span class="cal-block-meta"><span class="cal-time">{{ item.due_time|time:"H:i" }}</span> &middot; {{ item.account.client_name }}</span>
+      </a>
+    </div>
+  {% else %}
+    <div class="cal-block is-projected prio-{{ item.priority|lower }}{% if placed.is_short %} is-short{% endif %}"
+         style="top: {{ placed.top|stringformat:'.4f' }}%; height: {{ placed.height|stringformat:'.4f' }}%; left: {{ placed.left|stringformat:'.4f' }}%; width: {{ placed.width|stringformat:'.4f' }}%"
+         title="{{ item.title }} (repeat, not raised yet) - {{ item.series.due_time|time:'H:i' }} - {{ item.series.account.client_name }}">
+      <div class="cal-block-inner">
+        <span class="cal-block-title">{{ item.title }}</span>
+        <span class="cal-block-meta"><span class="cal-time">{{ item.series.due_time|time:"H:i" }}</span> &middot; {{ item.series.account.client_name }}</span>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}

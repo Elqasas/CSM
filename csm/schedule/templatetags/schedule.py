@@ -33,5 +33,5 @@ def entry_overflow(bucket, limit: int) -> int:
         return 0
     return sum(
         max(len(bucket.get(part, [])) - int(limit), 0)
-        for part in ("activities", "tasks", "projected")
+        for part in ("activities", "meetings", "tasks", "projected")
     )

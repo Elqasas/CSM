@@ -397,7 +397,18 @@ longer entered by hand, and synced ones close in Jira, not here. Organizations
 that match no client, or more than one, are listed on `/integrations/` (Admin)
 rather than guessed.
 
-To connect it, an Admin opens **Settings → Integrations**, enters the Jira site,
+**Microsoft 365 calendars and Teams attendance** are built on the shape
+settled above. `sync_teams` reads each active user's Outlook calendar by email
+into `csm/meetings/` (one `Meeting` per occurrence, one `CalendarEntry` per
+person holding it) and shows it on that person's calendar only, with an All /
+Platform / Microsoft 365 filter. A Teams meeting counts as client contact only
+when its attendance report lists a contact's stored email - then, and only then,
+the sync writes a `MEETING` activity (`source=TEAMS`). Invited but absent counts
+for nothing. An Admin connects it on **Settings → Integrations → Microsoft 365**
+with an Entra ID app registration; the page lists the four Graph permissions and
+the Teams access policy attendance needs.
+
+To connect Jira, an Admin opens **Settings → Integrations**, enters the Jira site,
 the account email and an API token (stored encrypted, never shown again),
 presses **Test connection**, then ticks **Use Jira for tickets** and saves. Run
 `manage.py sync_jira --full` once afterwards for the first complete read. The
@@ -406,9 +417,8 @@ them, until the page is first saved.
 
 Not built yet:
 
-- **Teams and Outlook.** The event bus they will subscribe to already exists,
-  and the shape Teams will take is settled under
-  [Meetings, tasks and the Teams integration](#meetings-tasks-and-the-teams-integration).
+- **Outlook email, and writing to calendars.** Microsoft 365 is read-only:
+  calendars in, Teams attendance in. Nothing is booked or sent from Bousla.
 - **Pushing to Jira.** The sync is read-only; Internal tasks are not yet sent
   out as issues (`Task.jira_ticket_id` stays reserved).
 

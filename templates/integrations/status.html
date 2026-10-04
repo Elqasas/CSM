@@ -3,8 +3,9 @@
 {% block title %}Integrations{% endblock %}
 
 {% block content %}
+  <h1 class="h4 mb-3">Integrations</h1>
+  {% include "integrations/_tabs.html" with tab="jira" %}
   <div class="mb-3">
-    <h1 class="h4 mb-0">Integrations</h1>
     <p class="text-body-secondary small mb-0">
       Tickets come from Jira Service Management. Each request's Organization
       is matched to the client with the same name, ignoring case and spacing.
