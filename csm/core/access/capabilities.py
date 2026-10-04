@@ -24,6 +24,9 @@ CSAT_RECORD = "csat.record"
 ADOPTION_RECORD = "adoption.record"
 ENGAGEMENT_EDIT = "engagement.edit"
 
+NOTE_VIEW = "note.view"
+NOTE_EDIT = "note.edit"
+
 TASK_VIEW = "task.view"
 TASK_CREATE = "task.create"
 TASK_EDIT = "task.edit"
@@ -36,10 +39,14 @@ HEALTH_OVERRIDE = "health.override"
 LIFECYCLE_EDIT = "lifecycle.edit"
 
 DASHBOARD_VIEW = "dashboard.view"
+#: The "My day" landing page: one person's own queue. A manager owns no queue,
+#: so a manager lands on Analytics instead.
+MYDAY_VIEW = "myday.view"
 IMPORT_RUN = "import.run"
 EXPORT_RUN = "export.run"
 USER_MANAGE = "user.manage"
 CUSTOM_FIELD_MANAGE = "custom_field.manage"
+INTEGRATION_MANAGE = "integration.manage"
 
 ALL = frozenset(
     {
@@ -56,6 +63,8 @@ ALL = frozenset(
         CSAT_RECORD,
         ADOPTION_RECORD,
         ENGAGEMENT_EDIT,
+        NOTE_VIEW,
+        NOTE_EDIT,
         TASK_VIEW,
         TASK_CREATE,
         TASK_EDIT,
@@ -65,9 +74,11 @@ ALL = frozenset(
         HEALTH_OVERRIDE,
         LIFECYCLE_EDIT,
         DASHBOARD_VIEW,
+        MYDAY_VIEW,
         IMPORT_RUN,
         EXPORT_RUN,
         USER_MANAGE,
         CUSTOM_FIELD_MANAGE,
+        INTEGRATION_MANAGE,
     }
 )

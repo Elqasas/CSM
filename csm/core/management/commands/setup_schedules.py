@@ -42,6 +42,10 @@ JOBS = (
 #: reminder decides for itself whether its moment has come.
 MINUTE_JOBS = (
     ("csm.send_task_reminders", "csm.core.jobs.send_task_reminders", 5),
+    # Registered whether or not Jira is configured: the command exits quietly
+    # when it is not, so switching Jira on is a .env change and no redeploy.
+    ("csm.sync_jira", "csm.core.jobs.sync_jira", 15),
+    ("csm.sync_teams", "csm.core.jobs.sync_teams", 15),
 )
 
 

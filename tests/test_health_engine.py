@@ -23,13 +23,21 @@ from csm.health import config, factors
 from csm.health.engine import ScoringInput, band, score
 
 TODAY = date(2026, 6, 15)
-# Far enough back that the meeting-attendance grace window has expired, so the
-# factor scores on real data in these tests.
+# A year back, so the day-count factors score on real data in these tests.
 BASELINE = TODAY - timedelta(days=365)
 
 
 def days_ago(n: int) -> date:
     return TODAY - timedelta(days=n)
+
+
+def rated(*scores: int, on: date | None = None) -> tuple[factors.CsatRating, ...]:
+    """One rating per score, each from a different contact."""
+    on = on or days_ago(10)
+    return tuple(
+        factors.CsatRating(score=value, recorded_on=on, contact_id=i + 1, rating_id=i + 1)
+        for i, value in enumerate(scores)
+    )
 
 
 def make_input(**overrides) -> ScoringInput:
@@ -41,8 +49,7 @@ def make_input(**overrides) -> ScoringInput:
         "open_bug_tickets": 0,
         "open_general_tickets": 0,
         "last_adoption_event_on": days_ago(3),
-        "latest_csat_score": 5,
-        "latest_csat_on": days_ago(10),
+        "csat_ratings": rated(5),
         "last_general_contact_on": days_ago(2),
         "last_weekly_contact_on": days_ago(2),
         "meetings_in_window": 4,
@@ -134,7 +141,7 @@ def test_omission_does_not_renormalise_the_other_weights():
 
 def test_non_managed_three_green_one_yellow_is_exactly_87_50():
     """Proves the score is a Decimal. Rounding here would corrupt the override rule."""
-    result = score(make_input(latest_csat_score=3), TODAY)
+    result = score(make_input(csat_ratings=rated(3)), TODAY)
     assert result.final_score == Decimal("87.50")
     assert result.status == HealthStatus.HEALTHY
 
@@ -144,7 +151,7 @@ def test_non_managed_all_yellow_is_watch_at_exactly_50():
         make_input(
             open_general_tickets=2,
             last_adoption_event_on=days_ago(20),
-            latest_csat_score=3,
+            csat_ratings=rated(3),
             last_general_contact_on=days_ago(20),
         ),
         TODAY,
@@ -176,8 +183,7 @@ def test_freshly_imported_account_with_no_history_is_green_not_red():
             last_adoption_event_on=None,
             last_general_contact_on=None,
             last_weekly_contact_on=None,
-            latest_csat_score=None,
-            latest_csat_on=None,
+            csat_ratings=(),
         ),
         TODAY,
     )
@@ -187,8 +193,8 @@ def test_freshly_imported_account_with_no_history_is_green_not_red():
     assert result.final_score == Decimal("87.50")
 
 
-def test_freshly_imported_managed_account_gets_the_meeting_grace_window():
-    """A count-in-window factor gets no help from the baseline floor."""
+def test_freshly_set_up_managed_account_with_no_meetings_is_red():
+    """Filling in the dates earns nothing: only completed meetings count."""
     result = score(
         managed_input(
             baseline_date=TODAY,
@@ -200,16 +206,18 @@ def test_freshly_imported_managed_account_gets_the_meeting_grace_window():
         TODAY,
     )
     meeting = factor_of(result, FactorId.MEETING_ATTENDANCE.value)
-    assert meeting.color == FactorColor.GREEN
-    assert meeting.detail["in_baseline_grace"] is True
-
-
-def test_meeting_grace_expires_after_thirty_days():
-    baseline = TODAY - timedelta(days=config.MEETING_BASELINE_GRACE_DAYS)
-    result = score(managed_input(baseline_date=baseline, meetings_in_window=0), TODAY)
-    meeting = factor_of(result, FactorId.MEETING_ATTENDANCE.value)
-    assert meeting.detail["in_baseline_grace"] is False
     assert meeting.color == FactorColor.RED
+    assert meeting.points == config.RED_POINTS
+
+
+def test_one_completed_meeting_on_setup_day_meets_a_monthly_requirement():
+    result = score(
+        managed_input(
+            baseline_date=TODAY, required_meeting_frequency=1, meetings_in_window=1
+        ),
+        TODAY,
+    )
+    assert factor_of(result, FactorId.MEETING_ATTENDANCE.value).color == FactorColor.GREEN
 
 
 # ---------------------------------------------------------------------------
@@ -340,12 +348,83 @@ def test_weekly_contact_is_binary_never_yellow():
     ],
 )
 def test_csat_boundaries(value, expected):
-    result = factors.csat(latest_score=value, latest_on=days_ago(5), as_of=TODAY)
+    result = factors.csat(ratings=rated(value, on=days_ago(5)), as_of=TODAY)
     assert result.color == expected
 
 
+@pytest.mark.parametrize(
+    ("scores", "average", "expected"),
+    [
+        ((4, 4, 3, 4), "3.75", FactorColor.YELLOW),  # just under green
+        ((4, 4, 4, 4), "4.00", FactorColor.GREEN),  # on the green line
+        ((3, 3, 2, 4), "3.00", FactorColor.YELLOW),  # on the yellow line
+        ((3, 3, 2, 3), "2.75", FactorColor.RED),  # just under yellow
+        ((2, 5, 5, 5), "4.25", FactorColor.GREEN),  # one unhappy voice of four
+    ],
+)
+def test_csat_bands_the_average_of_every_contact(scores, average, expected):
+    result = factors.csat(ratings=rated(*scores), as_of=TODAY)
+    assert result.detail["average"] == average
+    assert result.detail["contacts"] == len(scores)
+    assert result.color == expected
+
+
+def test_a_contact_rated_twice_in_a_quarter_counts_once_at_their_latest():
+    """One person asked twice is still one voice, and their newer view stands."""
+    ratings = (
+        factors.CsatRating(score=1, recorded_on=date(2026, 4, 10), contact_id=7, rating_id=1),
+        factors.CsatRating(score=5, recorded_on=date(2026, 6, 1), contact_id=7, rating_id=2),
+        factors.CsatRating(score=4, recorded_on=date(2026, 5, 1), contact_id=8, rating_id=3),
+    )
+    result = factors.csat(ratings=ratings, as_of=TODAY)
+    assert result.detail["average"] == "4.50"
+    assert result.detail["contacts"] == 2
+    assert result.detail["ratings"] == 3
+
+
+def test_ratings_with_no_contact_each_count_on_their_own():
+    ratings = (
+        factors.CsatRating(score=2, recorded_on=days_ago(5), rating_id=1),
+        factors.CsatRating(score=4, recorded_on=days_ago(5), rating_id=2),
+    )
+    result = factors.csat(ratings=ratings, as_of=TODAY)
+    assert result.detail["average"] == "3.00"
+    assert result.detail["contacts"] == 2
+
+
+def test_only_the_latest_rated_quarter_counts():
+    """Q1's poor ratings are history once Q2 has a round of its own."""
+    ratings = (
+        factors.CsatRating(score=1, recorded_on=date(2026, 3, 31), contact_id=1, rating_id=1),
+        factors.CsatRating(score=1, recorded_on=date(2026, 3, 30), contact_id=2, rating_id=2),
+        factors.CsatRating(score=5, recorded_on=date(2026, 4, 1), contact_id=1, rating_id=3),
+    )
+    result = factors.csat(ratings=ratings, as_of=TODAY)
+    assert result.detail["quarter"] == "2026 Q2"
+    assert result.detail["average"] == "5.00"
+    assert result.color == FactorColor.GREEN
+
+
+def test_last_quarter_holds_until_the_new_one_is_rated():
+    """On 1 July nobody has been surveyed yet; Q2's result still stands."""
+    result = factors.csat(ratings=rated(2, 3, on=date(2026, 6, 20)), as_of=date(2026, 7, 1))
+    assert result.detail["quarter"] == "2026 Q2"
+    assert result.color == FactorColor.RED
+
+
+def test_csat_quarters_summarises_each_quarter_newest_first():
+    ratings = rated(5, 3, on=date(2026, 5, 1)) + (
+        factors.CsatRating(score=2, recorded_on=date(2026, 1, 15), contact_id=9, rating_id=9),
+    )
+    quarters = factors.csat_quarters(ratings)
+    assert [(q.label, str(q.average), q.voices) for q in quarters] == [
+        ("2026 Q2", "4.00", 2),
+        ("2026 Q1", "2.00", 1),
+    ]
+
+
 def test_missing_csat_scores_yellow_and_is_flagged():
-    result = factors.csat(latest_score=None, latest_on=None, as_of=TODAY)
+    result = factors.csat(ratings=(), as_of=TODAY)
     assert result.color == FactorColor.YELLOW
     assert result.points == config.CSAT_MISSING_POINTS
     assert result.reason == "csat_missing"
@@ -354,12 +433,12 @@ def test_missing_csat_scores_yellow_and_is_flagged():
 
 def test_stale_csat_is_treated_as_missing():
     stale_day = days_ago(config.CSAT_VALIDITY_DAYS + 1)
-    result = factors.csat(latest_score=5, latest_on=stale_day, as_of=TODAY)
+    result = factors.csat(ratings=rated(5, on=stale_day), as_of=TODAY)
     assert result.color == FactorColor.YELLOW
     assert result.reason == "csat_stale"
 
     fresh_day = days_ago(config.CSAT_VALIDITY_DAYS)
-    fresh = factors.csat(latest_score=5, latest_on=fresh_day, as_of=TODAY)
+    fresh = factors.csat(ratings=rated(5, on=fresh_day), as_of=TODAY)
     assert fresh.color == FactorColor.GREEN
 
 
@@ -388,8 +467,6 @@ def test_meeting_attendance_boundaries(meetings, required, expected):
     result = factors.meeting_attendance(
         meetings_in_window=meetings,
         required_per_month=required,
-        baseline=BASELINE,
-        as_of=TODAY,
     )
     assert result.color == expected
 
@@ -448,7 +525,7 @@ def test_omission_cap_leaves_lower_bands_alone(value):
 
 
 def test_breakdown_records_every_factor_with_its_contribution():
-    result = score(managed_input(latest_csat_score=3), TODAY)
+    result = score(managed_input(csat_ratings=rated(3)), TODAY)
     blob = result.breakdown()
 
     assert set(blob["factors"]) == set(config.MANAGED.factors)
@@ -463,7 +540,7 @@ def test_weakest_factors_names_what_is_dragging_the_account_down():
         managed_input(
             last_weekly_contact_on=days_ago(30),  # red
             open_bug_tickets=2,  # red
-            latest_csat_score=3,  # yellow
+            csat_ratings=rated(3),  # yellow
         ),
         TODAY,
     )
@@ -540,11 +617,71 @@ def test_the_result_records_the_cap_only_when_it_changed_the_answer():
             baseline_date=date(2025, 1, 1),
             last_general_contact_on=date(2025, 1, 1),
             last_adoption_event_on=date(2025, 1, 1),
-            latest_csat_score=5,
-            latest_csat_on=date(2026, 9, 1),
+            csat_ratings=rated(5, on=date(2026, 9, 1)),
         ),
         date(2026, 9, 21),
     )
     assert result.status == HealthStatus.AT_RISK
     assert result.capped_by_red_factors is True
     assert result.breakdown()["capped_by_red_factors"] is True
+
+
+# ---------------------------------------------------------------------------
+# CSAT points are proportional to the average, with a floor
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("scores", "points"),
+    [
+        ((1,), 5),  # the lowest average still earns something
+        ((1, 2), 15),  # 1.50: halfway from 5 to 25
+        ((2,), 25),
+        ((2, 3), Decimal("37.50")),  # 2.50
+        ((3,), 50),
+        ((3, 4, 4), Decimal("66.75")),  # 3.67
+        ((4,), 75),
+        ((4, 5), Decimal("87.50")),  # 4.50
+        ((5,), 100),
+    ],
+)
+def test_csat_points_follow_the_average(scores, points):
+    assert factors.csat(ratings=rated(*scores), as_of=TODAY).points == points
+
+
+@pytest.mark.parametrize(
+    ("scores", "contribution", "final"),
+    [
+        ((1,), "1.00", "81.00"),  # 5 points at 20%: one percent, not zero
+        ((2,), "5.00", "85.00"),
+    ],
+)
+def test_a_red_csat_still_adds_to_a_managed_account(scores, contribution, final):
+    red = score(managed_input(csat_ratings=rated(*scores)), TODAY)
+    blob = red.breakdown()["factors"][FactorId.CSAT.value]
+    assert blob["color"] == FactorColor.RED
+    assert blob["contribution"] == contribution
+    assert red.final_score == Decimal(final)
+
+
+def test_a_red_csat_still_counts_towards_the_red_factor_cap():
+    """It earns points, but it is red - and the cap counts colours."""
+    result = score(
+        make_input(
+            csat_ratings=rated(1),
+            last_adoption_event_on=days_ago(60),  # red
+            open_bug_tickets=0,
+            last_general_contact_on=days_ago(2),
+        ),
+        TODAY,
+    )
+    assert result.status == HealthStatus.AT_RISK
+
+
+def test_fractional_points_survive_the_json_breakdown():
+    import json
+
+    blob = score(make_input(csat_ratings=rated(3, 4, 4)), TODAY).breakdown()
+    stored = json.loads(json.dumps(blob))
+    assert stored["factors"][FactorId.CSAT.value]["points"] == "66.75"
+    assert stored["factors"][FactorId.CSAT.value]["contribution"] == "16.69"

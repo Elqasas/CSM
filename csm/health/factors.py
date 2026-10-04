@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from csm.core.enums import FactorColor, FactorId, FactorOutcome
@@ -21,7 +21,9 @@ class FactorResult:
     factor: str
     outcome: str
     color: str | None
-    points: int | None
+    # Whole numbers from the stepped factors; CSAT's are proportional and may
+    # carry two decimal places.
+    points: int | Decimal | None
     detail: dict[str, Any] = field(default_factory=dict)
     reason: str = ""
 
@@ -133,39 +135,140 @@ def monthly_adoption(
     )
 
 
-def csat(*, latest_score: int | None, latest_on: date | None, as_of: date) -> FactorResult:
-    """Most recent CSAT rating, if it is recent enough to still be signal."""
-    stale = False
-    if latest_score is not None and latest_on is not None and config.CSAT_VALIDITY_DAYS:
-        stale = (as_of - latest_on).days > config.CSAT_VALIDITY_DAYS
+@dataclass(frozen=True)
+class CsatRating:
+    """One rating, as the engine sees it.
 
-    if latest_score is None or latest_on is None or stale:
+    ``contact_id`` is there only to count each person once; ``rating_id`` breaks
+    a tie between two ratings from one contact on the same day, newest winning.
+    """
+
+    score: int
+    recorded_on: date
+    contact_id: int | None = None
+    rating_id: int = 0
+
+
+@dataclass(frozen=True)
+class CsatQuarter:
+    """A calendar quarter's CSAT: each contact's latest rating, averaged."""
+
+    year: int
+    quarter: int
+    average: Decimal
+    voices: int  # ratings counted: one per contact, plus each unnamed one
+    ratings: int  # ratings recorded in the quarter, superseded ones included
+    latest_on: date
+
+    @property
+    def label(self) -> str:
+        return f"{self.year} Q{self.quarter}"
+
+    @property
+    def color(self) -> str:
+        return csat_color(self.average)
+
+
+def quarter_of(day: date) -> tuple[int, int]:
+    return day.year, (day.month - 1) // 3 + 1
+
+
+def csat_quarters(ratings) -> list[CsatQuarter]:
+    """Every quarter that holds a rating, newest first.
+
+    Within a quarter a contact's latest rating replaces their earlier ones, so a
+    follow-up that changed someone's mind counts as their view rather than as a
+    second person agreeing with the first.
+    """
+    by_quarter: dict[tuple[int, int], list[CsatRating]] = {}
+    for rating in ratings:
+        by_quarter.setdefault(quarter_of(rating.recorded_on), []).append(rating)
+
+    quarters = []
+    for (year, quarter), rows in by_quarter.items():
+        latest_per_voice: dict[Any, CsatRating] = {}
+        for rating in sorted(rows, key=lambda r: (r.recorded_on, r.rating_id)):
+            voice = rating.contact_id
+            if voice is None:
+                voice = ("unnamed", rating.rating_id)
+            latest_per_voice[voice] = rating
+        total = sum(r.score for r in latest_per_voice.values())
+        average = (Decimal(total) / Decimal(len(latest_per_voice))).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        quarters.append(
+            CsatQuarter(
+                year=year,
+                quarter=quarter,
+                average=average,
+                voices=len(latest_per_voice),
+                ratings=len(rows),
+                latest_on=max(r.recorded_on for r in rows),
+            )
+        )
+    return sorted(quarters, key=lambda q: (q.year, q.quarter), reverse=True)
+
+
+def csat_points(average: Decimal) -> int | Decimal:
+    """Proportional to the average: see ``config.CSAT_POINTS_PER_STEP``."""
+    at_two = config.CSAT_POINTS_PER_STEP
+    if average >= 2:
+        points = (average - 1) * config.CSAT_POINTS_PER_STEP
+    else:
+        # 1.00 is not zero: the line from 1 to 2 starts at CSAT_POINTS_AT_ONE.
+        points = config.CSAT_POINTS_AT_ONE + (average - 1) * (at_two - config.CSAT_POINTS_AT_ONE)
+    points = points.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # A whole number stays an int, so it reads and stores as the stepped
+    # factors' points do.
+    return int(points) if points == points.to_integral_value() else points
+
+
+def csat_color(average: Decimal) -> str:
+    if average >= config.CSAT_GREEN_MIN:
+        return FactorColor.GREEN.value
+    if average >= config.CSAT_YELLOW_MIN:
+        return FactorColor.YELLOW.value
+    return FactorColor.RED.value
+
+
+def csat(*, ratings, as_of: date) -> FactorResult:
+    """The latest rated quarter's average, if it is recent enough to be signal."""
+    quarters = csat_quarters(r for r in ratings if r.recorded_on <= as_of)
+    current = quarters[0] if quarters else None
+
+    stale = False
+    if current is not None and config.CSAT_VALIDITY_DAYS:
+        stale = (as_of - current.latest_on).days > config.CSAT_VALIDITY_DAYS
+
+    if current is None or stale:
         return FactorResult(
             factor=FactorId.CSAT.value,
             outcome=FactorOutcome.SCORED.value,
             color=FactorColor.YELLOW.value,
             points=config.CSAT_MISSING_POINTS,
             detail={
-                "score": latest_score,
-                "recorded_on": latest_on.isoformat() if latest_on else None,
+                "quarter": current.label if current else None,
+                "average": str(current.average) if current else None,
+                "recorded_on": current.latest_on.isoformat() if current else None,
                 "stale": stale,
                 "data_available": False,
             },
             reason="csat_stale" if stale else "csat_missing",
         )
 
-    if latest_score >= config.CSAT_GREEN_MIN:
-        color = FactorColor.GREEN.value
-    elif latest_score == config.CSAT_YELLOW:
-        color = FactorColor.YELLOW.value
-    else:
-        color = FactorColor.RED.value
-    return _scored(
-        FactorId.CSAT.value,
-        color,
-        score=latest_score,
-        recorded_on=latest_on.isoformat(),
-        data_available=True,
+    return FactorResult(
+        factor=FactorId.CSAT.value,
+        outcome=FactorOutcome.SCORED.value,
+        color=current.color,
+        points=csat_points(current.average),
+        detail={
+            "quarter": current.label,
+            "average": str(current.average),
+            "contacts": current.voices,
+            "ratings": current.ratings,
+            "recorded_on": current.latest_on.isoformat(),
+            "data_available": True,
+        },
     )
 
 
@@ -208,10 +311,8 @@ def meeting_attendance(
     *,
     meetings_in_window: int,
     required_per_month: int | None,
-    baseline: date,
-    as_of: date,
 ) -> FactorResult:
-    """Share of the required meeting frequency met over the trailing 30 days.
+    """Share of the required meeting frequency met so far this calendar month.
 
     Omitted entirely when the required frequency is not set. The remaining
     weights are deliberately not redistributed, so the account is scored out of
@@ -224,17 +325,9 @@ def meeting_attendance(
             meetings_in_window=meetings_in_window,
         )
 
-    days_since_baseline = (as_of - baseline).days
-    if days_since_baseline < config.MEETING_BASELINE_GRACE_DAYS:
-        return _scored(
-            FactorId.MEETING_ATTENDANCE.value,
-            FactorColor.GREEN.value,
-            meetings_in_window=meetings_in_window,
-            required_per_month=required_per_month,
-            in_baseline_grace=True,
-            days_since_baseline=days_since_baseline,
-        )
-
+    # No grace window after the baseline: setting the frequency or the
+    # account's dates earns nothing on its own. Only completed meetings count,
+    # so a managed account with none in the window is red from the start.
     # Integer comparison throughout. Computing a float percentage and comparing
     # it against 100 and 50 would put a rounding step between the data and a
     # business decision.
@@ -254,5 +347,4 @@ def meeting_attendance(
         meetings_in_window=meetings_in_window,
         required_per_month=required_per_month,
         compliance_pct=compliance_pct,
-        in_baseline_grace=False,
     )

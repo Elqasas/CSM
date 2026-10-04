@@ -8,28 +8,34 @@
 /* ------------------------------------------------------------- foundations */
 
 :root {
-  /* A calmer page than pure white behind raised cards. The difference is
-     deliberately small: enough to separate a card from the page, not enough to
-     read as a coloured background. */
-  --app-page: #f6f7fb;
+  /* Bousla's "Lapis & Sand". The page is a warm sand-tinted neutral rather
+     than a cool grey - the chart under the compass - and cards stay white on
+     it. The difference is deliberately small: enough to separate a card from
+     the page, not enough to read as a coloured background. */
+  --app-page: #f6f5f1;
   --app-surface: #ffffff;
-  --app-border: #e5e7ef;
-  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --app-shadow-lg: 0 4px 6px -2px rgba(16, 24, 40, 0.03), 0 12px 16px -4px rgba(16, 24, 40, 0.08);
+  --app-border: #e3dfd4;
+  --app-shadow: 0 1px 2px rgba(20, 26, 46, 0.04), 0 1px 3px rgba(20, 26, 46, 0.06);
+  --app-shadow-lg: 0 4px 6px -2px rgba(20, 26, 46, 0.03), 0 12px 16px -4px rgba(20, 26, 46, 0.08);
   --app-radius: 0.75rem;
 
-  /* Indigo as the single accent. One hue carries every interactive element, so
+  /* Lapis as the single accent. One hue carries every interactive element, so
      colour means "you can act on this" rather than decorating at random. It was
-     run through the palette validator against white: L 0.51, chroma clear of
-     the floor, 3:1 contrast, and 21.4 from the aqua used beside it. */
-  --brand-600: #4f46e5;
-  --brand-700: #4338ca;
-  --brand-500: #6366f1;
-  --brand-100: #e0e7ff;
-  --brand-050: #eef2ff;
+     run through the palette validator: 6.9:1 on white, chroma clear of the
+     floor, and well away from all three health colours. Teal was rejected
+     because it measured 9.2 from Healthy green, where 15 is the floor, and a
+     brand that reads as a health signal would mislead on every button.
+     --brand-on is the text that sits on a brand fill. */
+  --brand-600: #2f4ccf;
+  --brand-700: #23379f;
+  --brand-500: #5b77ea;
+  --brand-100: #dfe5fb;
+  --brand-050: #eef1fc;
+  --brand-on: #ffffff;
 
-  --app-ink: #101828;
-  --app-ink-muted: #667085;
+  --app-ink: #141a2e;
+  --app-ink-muted: #5f6576;
+  --app-subtle: #eeece5;
 
   --health-healthy: #198754;
   --health-watch: #b8860b;
@@ -140,12 +146,12 @@
    Chart tokens
    ======================================================================
    Every value below came out of `node scripts/validate_palette.js`, run against
-   this app's own surfaces (white in light, #212529 in dark) in both modes. None
+   this app's own card surfaces (white in light, navy #121a2b in dark). None
    of it was eyeballed.
 
-   The categorical pair is the brand indigo and an amber: indigo alone cannot
+   The categorical pair is the brand lapis and an amber: lapis alone cannot
    carry two series, and amber is the partner that survives colour blindness
-   best - the pair measures ΔE 32 protan / 27 tritan in light and 32 / 29 in
+   best - the pair measures ΔE 30 protan / 28 tritan in light and 30 / 29 in
    dark, where 8 is the floor. A teal second series looked more fashionable and
    measured 6.3 tritan in dark, which is inside the band that is only legal with
    a second channel. Fashion is not worth that.
@@ -163,12 +169,12 @@
 
 :root {
   --viz-surface: #ffffff;
-  --viz-ink: #0f172a;
-  --viz-ink-muted: #64748b;
-  --viz-grid: #e2e8f0;
-  --viz-axis: #cbd5e1;
+  --viz-ink: #141a2e;
+  --viz-ink-muted: #5f6576;
+  --viz-grid: #ebe8df;
+  --viz-axis: #d6d1c4;
 
-  --viz-series-1: #4f46e5;
+  --viz-series-1: #2f4ccf;
   --viz-series-2: #c2620c;
 
   --viz-status-good: #059669;
@@ -178,30 +184,35 @@
 }
 
 [data-bs-theme="dark"] {
-  --app-page: #0f1117;
-  --app-surface: #171a21;
-  --app-border: #262b36;
+  /* Deep navy ink rather than neutral grey, so the dark mode is still Bousla
+     and not a generic dark theme. */
+  --app-page: #0b1120;
+  --app-surface: #121a2b;
+  --app-border: #22304a;
   --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
   --app-shadow-lg: 0 4px 6px -2px rgba(0, 0, 0, 0.3), 0 12px 16px -4px rgba(0, 0, 0, 0.45);
 
-  /* Lifted for the dark surface rather than reused: #4f46e5 on near-black is
-     muddy, and an accent that cannot be read is not an accent. */
-  --brand-600: #818cf8;
-  --brand-700: #a5b4fc;
-  --brand-500: #6366f1;
-  --brand-100: rgba(99, 102, 241, 0.18);
-  --brand-050: rgba(99, 102, 241, 0.10);
+  /* Lifted for the dark surface rather than reused: #2f4ccf on navy is muddy,
+     and an accent that cannot be read is not an accent. The lift makes the
+     fill light, so text on it turns dark (7.8:1) - white would be 2.4. */
+  --brand-600: #8ea2f7;
+  --brand-700: #b9c5fa;
+  --brand-500: #5b77ea;
+  --brand-100: rgba(91, 119, 234, 0.22);
+  --brand-050: rgba(91, 119, 234, 0.12);
+  --brand-on: #0b1120;
 
-  --app-ink: #f0f2f7;
-  --app-ink-muted: #98a2b3;
+  --app-ink: #eef1f8;
+  --app-ink-muted: #97a1b8;
+  --app-subtle: #1a2337;
 
-  --viz-surface: #212529;
-  --viz-ink: #f8fafc;
-  --viz-ink-muted: #94a3b8;
-  --viz-grid: #2b3240;
-  --viz-axis: #3a4354;
+  --viz-surface: #121a2b;
+  --viz-ink: #eef1f8;
+  --viz-ink-muted: #97a1b8;
+  --viz-grid: #22304a;
+  --viz-axis: #33425f;
 
-  --viz-series-1: #6366f1;
+  --viz-series-1: #5b77ea;
   --viz-series-2: #d97706;
 
   --viz-status-good: #0f9d6e;
@@ -362,6 +373,12 @@ a.viz-legend-link:hover { background: var(--app-page); color: inherit; }
   justify-content: center;
 }
 
+/* White in both themes, not the page colour. A brand mark is drawn for a light
+   background; on the dark surface its ink disappears. Uploads are stored as
+   solid tiles already (accounts/logos.py), so this only shows behind one that
+   has not been refitted yet. */
+img.acct-logo { background: #fff; }
+
 .acct-logo-initials {
   font-weight: 600;
   font-size: 1rem;
@@ -475,7 +492,7 @@ h1 + p.text-body-secondary { margin-top: 0.125rem; }
   border-bottom-width: 1px;
 }
 .table > tbody > tr > td { padding-top: 0.625rem; padding-bottom: 0.625rem; }
-.table-hover > tbody > tr:hover > * { background-color: rgba(13, 110, 253, 0.035); }
+.table-hover > tbody > tr:hover > * { background-color: var(--brand-050); }
 
 .form-label { font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; }
 .form-text { font-size: 0.8125rem; }
@@ -557,10 +574,30 @@ h1 + p.text-body-secondary { margin-top: 0.125rem; }
   --bs-link-hover-color: var(--brand-700);
   --bs-border-radius: var(--app-radius);
   --bs-border-radius-sm: 0.5rem;
-  --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bs-body-font-family: var(--font-body);
+  /* Bootstrap's own greys, mapped onto the sand and navy neutrals so inputs,
+     dropdowns, modals and badges match the cards instead of falling back to
+     Bootstrap's #212529 in dark. */
+  --bs-body-bg: var(--app-surface);
+  --bs-body-color: var(--app-ink);
+  --bs-emphasis-color: var(--app-ink);
+  --bs-secondary-color: var(--app-ink-muted);
+  --bs-secondary-bg: var(--app-subtle);
+  --bs-tertiary-bg: var(--app-page);
+  --bs-border-color: var(--app-border);
+}
+
+/* Readex Pro for headings, the wordmark and big numbers: it has a matching
+   Arabic design, so the name can be set in Arabic without a second face. IBM
+   Plex Sans for everything read at small sizes, with tabular figures; Plex
+   Sans Arabic is its sibling if an Arabic interface is ever wanted. */
+:root {
+  --font-display: "Readex Pro", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 body { color: var(--app-ink); }
+h1, h2, h3, h4, h5, .h1, .h2, .h3, .h4, .h5, .navbar-brand { font-family: var(--font-display); }
 
 /* ------------------------------------------------------------------ chrome */
 
@@ -570,8 +607,54 @@ body { color: var(--app-ink); }
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 }
-.navbar-brand { font-weight: 650; color: var(--app-ink); }
-.navbar-brand .bi { color: var(--brand-600); }
+.navbar-brand { font-weight: 600; color: var(--app-ink); }
+.navbar-brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+
+/* The whole brand - mark, name and tagline - is one generous target with a
+   visible hover and focus state, so it reads as the way home rather than as a
+   label. The negative margin keeps the mark aligned with the page edge while
+   the padding enlarges what can be clicked. */
+.navbar-brand {
+  padding: 0.3rem 0.65rem 0.3rem 0.4rem;
+  margin-left: -0.4rem;
+  border-radius: 0.75rem;
+  transition: background-color 120ms ease;
+}
+.navbar-brand:hover { background: var(--brand-050); color: var(--app-ink); }
+.navbar-brand:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--brand-100); }
+.navbar-brand .brand-mark { width: 2.25rem; height: 2.25rem; transition: transform 160ms ease; }
+.navbar-brand:hover .brand-mark { transform: rotate(-8deg); }
+@media (prefers-reduced-motion: reduce) {
+  .navbar-brand:hover .brand-mark { transform: none; }
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-tagline {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--app-ink-muted);
+}
+
+/* The compass mark. The needle is cut out in the surface colour rather than
+   white, so it stays legible when the dark theme lifts the tile to a light
+   step. */
+/* The name in capitals, opened up a little: capitals set at the spacing meant
+   for lowercase read as cramped. */
+.wordmark { letter-spacing: 0.08em; font-weight: 600; }
+
+/* Room between the name and the first tab, so the brand reads as a heading
+   rather than as one more link. Wide screens only: below lg the menu
+   collapses and the gap would only push the toggler away. */
+@media (min-width: 992px) {
+  .navbar { --bs-navbar-brand-margin-end: 5rem; }
+}
+
+.brand-mark { width: 1.6rem; height: 1.6rem; flex: none; }
+.brand-mark-tile { fill: var(--brand-600); }
+.brand-mark-ring { stroke: var(--app-surface); stroke-opacity: 0.45; }
+.brand-mark-north { fill: var(--app-surface); }
+.brand-mark-south { fill: var(--app-surface); fill-opacity: 0.5; }
 
 /* A pill for the active tab rather than an underline: it survives a wrapped
    navbar on a narrow screen, where an underline detaches from its label. */
@@ -636,6 +719,10 @@ body { color: var(--app-ink); }
 .btn:focus-visible { box-shadow: 0 0 0 3px var(--brand-100); }
 
 .btn-primary {
+  --bs-btn-color: var(--brand-on);
+  --bs-btn-hover-color: var(--brand-on);
+  --bs-btn-active-color: var(--brand-on);
+  --bs-btn-disabled-color: var(--brand-on);
   --bs-btn-bg: var(--brand-600);
   --bs-btn-border-color: var(--brand-600);
   --bs-btn-hover-bg: var(--brand-700);
@@ -649,6 +736,8 @@ body { color: var(--app-ink); }
   --bs-btn-border-color: var(--brand-600);
   --bs-btn-hover-bg: var(--brand-600);
   --bs-btn-hover-border-color: var(--brand-600);
+  --bs-btn-hover-color: var(--brand-on);
+  --bs-btn-active-color: var(--brand-on);
 }
 .btn-outline-secondary {
   --bs-btn-color: var(--app-ink-muted);
@@ -760,21 +849,21 @@ body { color: var(--app-ink); }
    and the lightest step still visible against the card it sits on. */
 
 :root {
-  --viz-rank-1: #312e81;
-  --viz-rank-2: #4338ca;
-  --viz-rank-3: #4f46e5;
-  --viz-rank-4: #818cf8;
-  --viz-rank-5: #a5b4fc;
+  --viz-rank-1: #1a2a75;
+  --viz-rank-2: #23379f;
+  --viz-rank-3: #2f4ccf;
+  --viz-rank-4: #6d83e6;
+  --viz-rank-5: #9aaaf0;
 }
 
 /* Dark mode runs the other way: on a dark surface the darkest step is the one
    that disappears, so the ramp is re-stepped rather than reused. */
 [data-bs-theme="dark"] {
-  --viz-rank-1: #e0e7ff;
-  --viz-rank-2: #c7d2fe;
-  --viz-rank-3: #a5b4fc;
-  --viz-rank-4: #818cf8;
-  --viz-rank-5: #6366f1;
+  --viz-rank-1: #dfe5fd;
+  --viz-rank-2: #b9c5fa;
+  --viz-rank-3: #8ea2f7;
+  --viz-rank-4: #6a83ef;
+  --viz-rank-5: #4a64d8;
 }
 
 /* --------------------------------------------------------- chart polish */
@@ -890,7 +979,7 @@ th[aria-sort="descending"] .th-sort { color: var(--brand-600); }
   --bs-btn-hover-color: var(--app-ink);
   --bs-btn-active-bg: var(--brand-600);
   --bs-btn-active-border-color: var(--brand-600);
-  --bs-btn-active-color: #fff;
+  --bs-btn-active-color: var(--brand-on);
   font-weight: 500;
 }
 .seg-group .btn-check:checked + .btn { box-shadow: none; }
@@ -1020,7 +1109,7 @@ th[aria-sort="descending"] .th-sort { color: var(--brand-600); }
 .cal-today { box-shadow: inset 0 0 0 2px var(--brand-600); }
 .cal-today .cal-daynum {
   background: var(--brand-600);
-  color: #fff;
+  color: var(--brand-on);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
 }
@@ -1034,3 +1123,187 @@ tr.row-link { cursor: pointer; }
    long title wraps under itself rather than under the bullet. */
 .note-item { position: relative; padding-left: 1rem; }
 .note-item::before { content: "\2022"; position: absolute; left: 0.25rem; }
+
+/* Account notes: a pasted URL or a long unbroken word must wrap rather than
+   push the edit and delete buttons off the card. */
+.note-text { overflow-wrap: anywhere; }
+
+/* ======================================================================
+   Calendar: meetings, and the week and day by the hour
+   ====================================================================== */
+
+/* A meeting from Outlook. The second series colour - the amber validated
+   against the brand lapis in both themes - and an icon, so where it came from
+   is never carried by colour alone. */
+.cal-entry.is-meeting {
+  border-left-color: var(--viz-series-2);
+  background: color-mix(in srgb, var(--viz-series-2) 10%, transparent);
+}
+.cal-entry.is-meeting .bi { color: var(--viz-series-2); margin-right: 0.15rem; }
+.cal-entry.is-private { font-style: italic; }
+
+.cal-week { --cal-hour: 3rem; --cal-gutter: 3.5rem; overflow: hidden; }
+.cal-week-scroll { overflow-x: auto; }
+.cal-week.is-week .cal-week-inner {
+  min-width: calc(var(--cal-gutter) + var(--cal-days) * 7.5rem);
+}
+
+.cal-row {
+  display: grid;
+  grid-template-columns: var(--cal-gutter) repeat(var(--cal-days), minmax(0, 1fr));
+}
+/* The header rows reserve the scrollbar's width, so their columns sit exactly
+   over the scrolling body's. */
+.cal-head,
+.cal-allday { overflow-y: hidden; scrollbar-gutter: stable; }
+
+.cal-head { border-bottom: 1px solid var(--app-border); }
+.cal-colhead {
+  text-align: center;
+  padding: 0.4rem 0.25rem;
+  border-left: 1px solid var(--app-border);
+}
+.cal-colhead a { color: inherit; text-decoration: none; display: inline-flex; align-items: baseline; gap: 0.35rem; }
+.cal-colhead a:hover { color: var(--brand-600); }
+.cal-colhead-day {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-ink-muted);
+  font-weight: 600;
+}
+.cal-colhead-num { font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.cal-colhead.is-today .cal-colhead-num {
+  background: var(--brand-600);
+  color: var(--brand-on);
+  border-radius: 999px;
+  padding: 0 0.45rem;
+}
+
+.cal-allday { border-bottom: 1px solid var(--app-border); }
+.cal-allday-cell {
+  border-left: 1px solid var(--app-border);
+  padding: 0.15rem 0.25rem 0.3rem;
+  min-height: 1.75rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+}
+.cal-gutter-label {
+  font-size: 0.68rem;
+  color: var(--app-ink-muted);
+  text-align: right;
+  padding: 0.4rem 0.4rem 0 0;
+}
+
+.cal-hours {
+  max-height: min(68vh, calc(24 * var(--cal-hour)));
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.cal-hour-label {
+  height: var(--cal-hour);
+  font-size: 0.68rem;
+  color: var(--app-ink-muted);
+  text-align: right;
+  padding-right: 0.4rem;
+  transform: translateY(-0.45em);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One day's hours. The hour lines are a background, the half hours a fainter
+   dash, so twenty-four rows cost no markup. */
+.cal-daycol {
+  position: relative;
+  height: calc(24 * var(--cal-hour));
+  border-left: 1px solid var(--app-border);
+  background-image:
+    linear-gradient(to bottom, var(--app-border) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--app-border) 55%, transparent) 1px, transparent 1px);
+  background-size: 100% var(--cal-hour), 100% var(--cal-hour);
+  background-position: 0 0, 0 calc(var(--cal-hour) / 2);
+}
+.cal-daycol.cal-weekend { background-color: var(--app-page); }
+.cal-daycol.is-today { background-color: var(--brand-050); }
+
+/* The time now, on today's column only. */
+.cal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--viz-status-critical);
+  z-index: 3;
+  pointer-events: none;
+}
+.cal-now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--viz-status-critical);
+}
+
+/* A block in the hours. Same channels as a line in the month: the left edge
+   says the priority or the source, the fill says planned or forecast. */
+.cal-block {
+  position: absolute;
+  padding: 1px 2px;
+  z-index: 1;
+}
+.cal-block-inner {
+  height: 100%;
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.3rem;
+  border-left: 3px solid var(--bs-border-color);
+  background: var(--app-surface);
+  box-shadow: 0 0 0 1px var(--app-border);
+  color: var(--app-ink);
+}
+.cal-block:hover { z-index: 2; }
+.cal-block:hover .cal-block-inner { box-shadow: 0 0 0 1px var(--brand-500), var(--app-shadow); }
+.cal-block a { color: inherit; text-decoration: none; }
+.cal-block .cal-block-title { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-block .cal-block-meta { color: var(--app-ink-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Under three-quarters of an hour there is room for one line: title, then
+   the time and client after it, clipped together rather than wrapped into a
+   second line the block is too short to show. */
+.cal-block.is-short .cal-block-inner {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-top: 0.05rem;
+  padding-bottom: 0;
+}
+.cal-block.is-short .cal-block-title,
+.cal-block.is-short .cal-block-meta { display: inline; }
+.cal-block.is-short .cal-block-meta { margin-left: 0.25rem; }
+.cal-block .cal-time { font-variant-numeric: tabular-nums; }
+
+.cal-block.prio-high .cal-block-inner { border-left-color: var(--viz-status-critical); }
+.cal-block.prio-medium .cal-block-inner { border-left-color: var(--brand-600); }
+.cal-block.is-projected .cal-block-inner {
+  background: transparent;
+  box-shadow: none;
+  border: 1px dashed var(--bs-border-color);
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--app-ink-muted);
+}
+.cal-block.is-meeting .cal-block-inner {
+  border-left-color: var(--viz-series-2);
+  background: color-mix(in srgb, var(--viz-series-2) 12%, var(--app-surface));
+}
+.cal-block.is-meeting.is-past .cal-block-inner { opacity: 0.75; }
+.cal-block.is-meeting .bi-microsoft-teams,
+.cal-block.is-meeting .bi-calendar-event { color: var(--viz-series-2); }
+.cal-join {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-weight: 600;
+  color: var(--brand-600) !important;
+}
+.cal-attended { color: var(--viz-status-good); }

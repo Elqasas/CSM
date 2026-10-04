@@ -70,6 +70,58 @@ def renewal_quarter_choices(accounts) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# Renewal quarter and year, asked for separately
+# ---------------------------------------------------------------------------
+# The analytics page offers the quarter as Q1-Q4 buttons with a year beside
+# them, rather than one list of "Q3 2026" pairs. Two parameters, each optional:
+# a quarter alone is that quarter in any year, a year alone is the whole year.
+
+RENEWAL_QUARTER_PARAM = "rq"
+RENEWAL_YEAR_PARAM = "ry"
+
+QUARTERS = (("1", "Q1"), ("2", "Q2"), ("3", "Q3"), ("4", "Q4"))
+
+
+def parse_quarter(raw: str | None) -> int | None:
+    text = (raw or "").strip().upper().removeprefix("Q")
+    return int(text) if text in {"1", "2", "3", "4"} else None
+
+
+def parse_year(raw: str | None) -> int | None:
+    text = (raw or "").strip()
+    if not text.isdigit():
+        return None
+    year = int(text)
+    return year if 1900 <= year <= 2999 else None
+
+
+def apply_renewal_parts(accounts, quarter_raw: str | None, year_raw: str | None):
+    """Narrow by the contract end's quarter, its year, or both.
+
+    Each part that cannot be read is ignored on its own, for the same reason as
+    above: an unreadable filter leaves the page as it was.
+    """
+    quarter, year = parse_quarter(quarter_raw), parse_year(year_raw)
+    if quarter is not None:
+        accounts = accounts.filter(contract_end_date__quarter=quarter)
+    if year is not None:
+        accounts = accounts.filter(contract_end_date__year=year)
+    return accounts
+
+
+def renewal_year_choices(accounts) -> list[int]:
+    """The years this reader actually has a renewal in, oldest first."""
+    return sorted(
+        {
+            day.year
+            for day in accounts.exclude(contract_end_date__isnull=True)
+            .values_list("contract_end_date", flat=True)
+            .distinct()
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
 # Ordering
 # ---------------------------------------------------------------------------
 # The account list and the analytics roster render one table partial, so they

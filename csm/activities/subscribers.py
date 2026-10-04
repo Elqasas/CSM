@@ -50,12 +50,16 @@ def activity_type_for(task) -> str:
     return CONTACT_TYPE_FOR_KIND.get(str(task.task_type), ActivityType.OTHER)
 
 
-def log_completed_task(task, *, actor=None):
+def log_completed_task(task, *, actor=None, occurred_on=None):
     """Write the log entry for a completed task, once.
 
     Idempotent through the one-to-one column rather than a check-then-insert: a
     second completion, a replayed event or a retried job finds the row already
     there instead of racing to write a duplicate.
+
+    ``occurred_on`` is given only when the task was entered after the fact with
+    the date it happened on. It is never later than today: a log entry cannot
+    record something that has not happened yet.
     """
     from csm.activities.models import Activity
 
@@ -78,8 +82,9 @@ def log_completed_task(task, *, actor=None):
         contact=task.contact,
         activity_type=activity_type_for(task),
         # The day it was done, not the day it was due. The log is a record of
-        # what happened, and it happened today.
-        occurred_on=clock.today(),
+        # what happened: today, unless it was entered after the fact with the
+        # date it actually took place.
+        occurred_on=min(occurred_on or clock.today(), clock.today()),
         subject=task.title,
         notes=task.description or "",
         source=ActivitySource.MANUAL,
@@ -93,7 +98,7 @@ def on_task_completed(event: TaskCompleted) -> None:
     task = Task.objects.filter(pk=event.task_id).select_related("contact").first()
     if task is None:
         return
-    log_completed_task(task)
+    log_completed_task(task, occurred_on=event.occurred_on)
 
 
 def register_subscribers() -> None:

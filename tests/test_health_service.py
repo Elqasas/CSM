@@ -14,6 +14,8 @@ from csm.accounts.models import Account
 from csm.core.enums import (
     NON_SCORABLE_STAGES,
     ActivityType,
+    FactorColor,
+    FactorId,
     HealthStatus,
     LifecycleStage,
     OverrideClearedReason,
@@ -169,7 +171,9 @@ def test_override_clears_on_any_score_change_even_within_the_same_band(csm_user)
     """The headline requirement: the comparison is the score, never the band."""
     account = healthy_account(is_managed_service=False)
     # Two yellow factors and two green: 75.00, which is Watch.
-    CsatFactory(account=account, score=3, recorded_on=days_ago(1))
+    # The quarter's only rating becomes a 3. Adding a second one would not do:
+    # beside the fixture's 5 it averages to 4.00, which is 75 points, not 50.
+    account.csat_responses.update(score=3)
     TicketFactory(account=account, ticket_kind=TicketKind.GENERAL)
     services.recalculate(account, as_of=TODAY)
     account.refresh_from_db()
@@ -183,7 +187,8 @@ def test_override_clears_on_any_score_change_even_within_the_same_band(csm_user)
     )
     assert override.score_at_override == Decimal("75.00")
 
-    # Move the score to 87.50: a different number, still not Healthy's band edge.
+    # Move the score to 81.25: the 3 and a new 5 average 4.00, which is 75 CSAT
+    # points - a different number, which is all the override rule compares.
     account.refresh_from_db()
     CsatFactory(account=account, score=5, recorded_on=TODAY)
     services.recalculate(account, as_of=TODAY)
@@ -193,7 +198,7 @@ def test_override_clears_on_any_score_change_even_within_the_same_band(csm_user)
 
     assert override.cleared_at is not None
     assert override.cleared_reason == OverrideClearedReason.SCORE_CHANGED
-    assert override.cleared_score == Decimal("87.50")
+    assert override.cleared_score == Decimal("81.25")
     assert account.effective_health_status == HealthStatus.HEALTHY
 
 
@@ -431,3 +436,70 @@ def test_an_at_risk_reached_only_by_the_cap_still_raises_an_alert(
     assert Task.objects.filter(
         account=account, task_type=TaskType.AUTO_HEALTH_ALERT, status="PENDING"
     ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Meeting Attendance counts the calendar month
+# ---------------------------------------------------------------------------
+
+
+def _meeting_factor(account, as_of):
+    return services.recalculate(account, as_of=as_of).breakdown()["factors"][
+        "MEETING_ATTENDANCE"
+    ]
+
+
+def test_a_meeting_on_the_last_day_of_the_previous_month_does_not_count():
+    account = healthy_account(managed=True)
+    account.required_meeting_frequency = 1
+    account.save()
+    account.activities.filter(activity_type=ActivityType.MEETING).delete()
+    ActivityFactory(
+        account=account, activity_type=ActivityType.MEETING, occurred_on=dt.date(2026, 5, 31)
+    )
+
+    factor = _meeting_factor(account, TODAY)
+    assert factor["detail"]["meetings_in_window"] == 0
+    assert factor["color"] == "RED"
+
+
+def test_a_meeting_on_the_first_of_the_month_counts_through_its_last_day():
+    account = healthy_account(managed=True)
+    account.required_meeting_frequency = 1
+    account.save()
+    account.activities.filter(activity_type=ActivityType.MEETING).delete()
+    ActivityFactory(
+        account=account, activity_type=ActivityType.MEETING, occurred_on=dt.date(2026, 6, 1)
+    )
+
+    assert _meeting_factor(account, dt.date(2026, 6, 30))["color"] == "GREEN"
+    assert _meeting_factor(account, dt.date(2026, 7, 1))["color"] == "RED"
+
+
+def test_csat_scores_the_latest_quarter_averaged_across_contacts():
+    """Read end to end: each contact once, at their latest, in 2026 Q2 only.
+
+    The fixture's 5 has no contact and counts on its own. Q1's 1 is outside the
+    quarter. The CFO's 1 is replaced by their later 2, and the user's 4 stands:
+    (5 + 2 + 4) / 3 = 3.67, yellow.
+    """
+    from csm.health.inputs import gather_inputs
+    from tests.factories import ContactFactory
+
+    account = healthy_account(is_managed_service=False)
+    cfo = ContactFactory(account=account, full_name="The CFO")
+    user = ContactFactory(account=account, full_name="A user")
+    CsatFactory(account=account, contact=cfo, score=1, recorded_on=dt.date(2026, 3, 20))
+    CsatFactory(account=account, contact=cfo, score=1, recorded_on=dt.date(2026, 4, 2))
+    CsatFactory(account=account, contact=cfo, score=2, recorded_on=dt.date(2026, 5, 9))
+    CsatFactory(account=account, contact=user, score=4, recorded_on=dt.date(2026, 5, 9))
+
+    inputs = gather_inputs(account, TODAY)
+    assert all(r.recorded_on >= dt.date(2026, 4, 1) for r in inputs.csat_ratings)
+
+    result = services.recalculate(account, as_of=TODAY)
+    csat = next(f for f in result.factors if f.factor == FactorId.CSAT.value)
+    assert csat.detail["quarter"] == "2026 Q2"
+    assert csat.detail["average"] == "3.67"
+    assert csat.detail["contacts"] == 3
+    assert csat.color == FactorColor.YELLOW

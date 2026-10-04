@@ -19,7 +19,7 @@ All commands assume the checked-in virtualenv. On Windows the interpreter is
 ### Tests and lint
 
 ```bash
-.venv/Scripts/python -m pytest                              # full suite, 862 tests
+.venv/Scripts/python -m pytest                              # full suite, 1098 tests
 .venv/Scripts/python -m pytest tests/test_health_engine.py  # one file
 .venv/Scripts/python -m pytest tests/test_access.py::test_only_the_access_package_interprets_role_or_seniority
 .venv/Scripts/python -m pytest -k "csat and stale"          # by name
@@ -51,13 +51,15 @@ warning fails the suite rather than accumulating.
 
 ### Scheduled jobs
 
-All three are idempotent and safe to re-run:
+All are idempotent and safe to re-run:
 
 ```bash
 manage.py recalculate_health      # daily half of the dual trigger
 manage.py generate_tasks          # renewal, quarterly and rollover reminders
 manage.py send_due_notifications  # 07:00 digests, then drain the email outbox
 manage.py send_task_reminders     # every 5 min: the hour/half-hour before a timed task
+manage.py sync_jira [--full]      # every 15 min: JSM issues into tickets; no-op until configured
+manage.py sync_teams              # every 15 min: Outlook calendars + Teams attendance; no-op until configured
 ```
 
 **Creating a task notifies nobody.** Only a health alert is announced at the
@@ -101,8 +103,17 @@ Do not add a field to `ScoringInput` to make a calculation convenient.
 Thresholds live in `health/config.py` rather than a database table because
 changing one retroactively changes the meaning of every stored history row.
 **Bump `ENGINE_VERSION` whenever a number there changes** — each history row
-records the version that produced it. It is at 1.1.0: 1.0.0 predates the
-red-factor cap.
+records the version that produced it. It is at 1.3.0: 1.0.0 predates the
+red-factor cap, and 1.1.0 still gave Meeting Attendance a 30-day green grace
+after the baseline date and counted a trailing 30 days. Now only completed
+Meeting activities in the current calendar month count. 1.2.0 scored CSAT on
+the single newest rating; now it is the latest calendar quarter that holds a
+rating, each contact's latest rating in it counted once and averaged (green at
+4.00, yellow at 3.00). CSAT is the one factor whose points are proportional
+rather than stepped by colour: 25 x (average - 1) from 2.00 up, and a line
+from 5 points at 1.00 to 25 at 2.00, so even a 1.00 adds 1% on a managed
+account. The red-factor cap therefore counts
+colours, never zero points.
 
 Two structural caps sit in `engine.band()` and neither touches a weight, so old
 history stays interpretable. The **omission cap** forces Watch when a factor is
@@ -148,8 +159,8 @@ and presenters ask that object; they never inspect the user's role.
 - **Activity visibility** is `Ability.visible_activities()`. An ACM sees only
   what a future Outlook/Teams sync would log — `source` values other than
   `MANUAL` — never a CSM's own record of a call or meeting, which is exactly
-  the log the health engine reads. Since no integration writes those sources
-  yet, an ACM's activity feed is empty until one does.
+  the log the health engine reads. The Teams sync writes `source=TEAMS`
+  rows for meetings a client contact attended, so those are what an ACM sees.
 
 The hard rule behind all of it: an ACM owns the commercial renewal and must
 never see any health signal, including in aggregated dashboard cards.
@@ -388,7 +399,12 @@ each view. The renewal quarter is on both the account list and analytics, and
 written twice it drifts - one page reading `Q4` and the other `2026-4`, or one
 treating an unparseable value as "everything" and the other as "nothing" (it is
 everything: a filter the page cannot read must leave the page as it was, never
-make the portfolio look empty). Choice lists come from `ability.accounts()`
+make the portfolio look empty). The account list still takes one `renewal=YYYY-Q`;
+analytics asks for the quarter (`rq`, Q1-Q4 buttons) and the year (`ry`, a list)
+separately, each optional - both parsed in `filters.py`. A renewal-chart bar sets
+both at once through a paired `toggle_filter "rq,ry" "3,2026"`. Health status,
+class and quarter there are segmented links; the lists auto-submit and carry
+everything else as hidden inputs (`HIDDEN_FILTER_PARAMS`). Choice lists come from `ability.accounts()`
 *before* the filter, or selecting a value collapses the control to that value
 with no way back. The CSM/ACM selects are scoped the same way: a list of every
 CSM in the company would name colleagues whose portfolios the reader cannot
@@ -441,6 +457,8 @@ rationale is in [README.md](README.md).
 | Managed account with no meeting frequency | Factor omitted, scored out of 80, weights **not** redistributed, band capped at Watch. |
 | Timezone | Africa/Cairo for all day counts. |
 | Missing or stale CSAT | Scored 50 and flagged. Not omitted, not green. |
+| CSAT with several raters | Latest rated quarter, one voice per contact at their latest, averaged. Last quarter holds until the next is rated. |
+| CSAT points | Proportional to the average: 25 x (average - 1) from 2.00 up; 5 points at 1.00 rising to 25 at 2.00. A 1.00 adds 1% (managed), not zero. |
 | Task emails | One digest per person per morning, plus an immediate standalone email per health alert. |
 
 The 80-point cap needs stating precisely: four green factors at 20% each is
@@ -462,7 +480,9 @@ from a CDN; no JavaScript build step.
 
 Also built: the **analytics dashboard** (`/analytics/`) — twelve cards, one
 shared filter, a per-role card registry, server-rendered inline SVG charts.
-`/` is a separate working landing page ("My day"), not the analytics grid.
+`/` is a separate working landing page ("My day"), not the analytics grid. It
+needs `myday.view`, which a Manager does not hold: sign-in, the logo and `/` send
+a manager to Analytics, and no page offers them My day.
 
 Also built: the **importer** (`/import/`, any CSM, CSM Senior or ACM — an ACM's
 `import.run` is narrowed by `Ability.importable_kinds()` to contacts only, since
@@ -489,8 +509,83 @@ Dark mode follows the OS preference with a toggle that overrides it, set in an
 inline script before first paint so a dark viewer gets no white flash. Both
 palettes are validated steps, not an inversion.
 
-Not built: the **integration seams**; `csm/integrations/` is an app shell with
-no models, deliberately deferred.
+Also built: the **Jira Service Management sync** (`csm/integrations/jira/`,
+`/integrations/` for Admin). Read-only and polled, see below.
+
+Also built: the **Microsoft 365 calendar sync** (`csm/integrations/teams/`,
+`/integrations/microsoft/` for Admin) and the **calendar by the hour** - week and
+day views are a time grid with an all-day row, and an All / Platform /
+Microsoft 365 filter (`?source=`). See below.
+
+### Outlook meetings and Teams attendance
+
+`sync_teams` reads every active user's Outlook calendar - matched by the user's
+email, app-only Graph credentials an Admin enters once - 30 days back and 90
+ahead, into `csm/meetings/`: one `Meeting` per `iCalUId`, one `CalendarEntry`
+per person holding it. **A person sees only meetings in their own calendar**;
+nothing in `core/access` widens that, a manager included. Private events keep
+no subject. A calendar that could not be read (no mailbox, 403) is left as it
+was, never emptied.
+
+`Meeting` is not `Activity` and `health/inputs.py` never reads it. **An
+invitation is not attendance**: when an ended Teams meeting with a contact
+invited has an attendance report, and a contact's *stored email* is in it, the
+sync writes one `MEETING` activity per account (`source=TEAMS`,
+`external_id=meeting:<pk>:account:<pk>`, unique) - that is what moves Meeting
+Attendance. Invited but absent is `NO_SHOW` and logs nothing; no report within
+three days is `UNAVAILABLE`. A settled meeting is never re-judged. The Admin can
+switch counting off. The calendar hides that activity when it already shows
+its meeting.
+
+Graph needs `Calendars.Read`, `User.Read.All`, `OnlineMeetings.Read.All` and
+`OnlineMeetingArtifact.Read.All` (application, admin-consented) plus a Teams
+application access policy for attendance; the page lists the steps. Read the
+connection through `teams/settings.current()`; there is no env fallback. Tests
+use `FakeGraphClient`, or `HttpGraphClient` with an injected transport.
+
+The time grid is `schedule/grid.lay_out()`, pure like `charts.py`: spans in
+minutes, overlapping ones in lanes, positions as percentages of the day. A timed
+task is drawn as `TASK_MINUTES` (30) from its due time. Meeting times reach
+templates as `start_time`/`end_time` (business-local), never the aware instant,
+since `TIME_ZONE` is UTC. Microsoft entries use `--viz-series-2` plus an icon.
+
+Not built: Outlook *email*, and writing to anybody's calendar.
+
+### Jira tickets come from JSM organizations
+
+`sync_jira` reads every issue raised under a JSM **Organization** and writes one
+`Ticket` per issue per matched account (`source=JIRA`, `external_key` = issue
+key, `created_by` null). The organization's name *is* the client name, compared
+after case-folding and collapsing whitespace - nothing else. No match, or two
+accounts sharing the name, is reported on `/integrations/` and never guessed.
+Every issue type counts: those named in `JIRA_BUG_ISSUE_TYPES` score as Bug (x3),
+everything else General (x1). Open/closed comes from Jira's *status category*,
+never a status name.
+
+- **Read first, then write in one transaction.** No HTTP inside the
+  transaction; a failed read writes nothing and leaves the cursor, so the next
+  run retries from the same place. Each ticket saves through the model so the
+  `post_save` hook rescores - never `queryset.update()`, which fires no signal.
+- **The sweep.** Incremental runs only see changed issues; an issue deleted in
+  Jira never changes again. Once a day (or `--full`) the open set is read whole
+  and any open Jira ticket missing from it is *closed*, not deleted.
+- **Configured on the page.** An Admin enters the site, account email, API
+  token, projects and bug types on `/integrations/` (`JiraConnection`, one row).
+  Once that row exists it *is* the connection and the `JIRA_*` env vars are
+  ignored - never merged field by field. Read it through
+  `jira/settings.current()`, never `settings.JIRA_*`. The token is Fernet-encrypted
+  with a key derived from `SECRET_KEY` (`integrations/crypto.py`), write-only in
+  the form; rotating `SECRET_KEY` means re-entering it. **Test connection** tries
+  the unsaved form (`/myself` plus field discovery).
+- **Jira only.** When "Use Jira for tickets" is ticked with all three of site,
+  email and token present, manual ticket entry is withdrawn (`jira_enabled` in
+  every template) and synced tickets cannot be closed or deleted in the app.
+  Manual tickets from before stay closable. Project keys and the field id reach
+  JQL, so the form holds them to Jira's formats.
+- **Only `csm/integrations/jira/` touches the API**, over stdlib `urllib`. Tests
+  use `FakeJiraClient`, or `HttpJiraClient` with an injected transport;
+  `config/settings/test.py` blanks the `JIRA_*` settings so a developer's `.env`
+  never reaches a real site.
 
 Open questions are listed at the end of README.md; each blocks a specific
 upcoming phase rather than current work.

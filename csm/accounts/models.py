@@ -427,3 +427,36 @@ class AccountCustomFieldValue(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.definition.name}={self.value!r} on {self.account.client_code}"
+
+
+class AccountNote(TimeStampedModel):
+    """Free text on an account, written and kept by the people working it.
+
+    Undated and outside the score on purpose: something that happened is an
+    Activity, something to do is a Task, and a note is neither. Nothing reads it
+    but the account page.
+    """
+
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="notes")
+    body = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        db_table = "account_notes"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"Note on {self.account_id}: {self.body[:40]}"

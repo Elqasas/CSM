@@ -1045,13 +1045,35 @@ def test_a_new_task_cannot_already_be_overdue(client, portfolio, people):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("role", ["csm", "senior", "acm", "manager"])
+@pytest.mark.parametrize("role", ["csm", "senior", "acm"])
 def test_the_dashboard_renders_for_every_role(client, portfolio, people, role):
     login(client, people[role])
     assert client.get(reverse("dashboard:index")).status_code == 200
 
 
+def test_a_manager_has_no_my_day_and_lands_on_analytics(client, portfolio, people):
+    """A manager owns no queue. Sign-in, the logo and a typed / all go to
+    Analytics, and nothing on the page offers My day."""
+    manager = people["manager"]
+    response = client.post(
+        reverse("users:login"), {"username": manager.email, "password": PASSWORD}, follow=True
+    )
+    assert response.redirect_chain[-1][0] == reverse("dashboard:analytics")
+
+    body = client.get(reverse("dashboard:analytics")).content.decode()
+    assert ">My day<" not in body
+    assert f'class="navbar-brand" href="{reverse("dashboard:analytics")}"' in body
+
+
 @pytest.mark.parametrize("role", ["csm", "senior", "acm", "manager"])
+def test_analytics_offers_no_my_day_button(client, portfolio, people, role):
+    login(client, people[role])
+    body = client.get(reverse("dashboard:analytics")).content.decode()
+    main = body[body.index("<main"):] if "<main" in body else body[body.index("Analytics</h1>"):]
+    assert "My day" not in main
+
+
+@pytest.mark.parametrize("role", ["csm", "senior", "acm"])
 def test_the_accounts_tile_on_my_day_opens_the_account_list(client, portfolio, people, role):
     """Every other tile on the row links somewhere; a count you cannot click
     through to is the one the eye keeps landing on."""
@@ -1184,3 +1206,23 @@ def test_a_manager_gets_no_create_button_at_all(client, portfolio, people):
     assert reverse("tasks:create_anywhere") not in body
     assert reverse("contacts:create_anywhere") not in body
     assert reverse("accounts:create") not in body
+
+
+def test_the_health_panel_shows_each_quarters_csat_average(client, portfolio, people):
+    """The number beside the ratings is the one the factor scores."""
+    from csm.core.clock import today
+    from tests.factories import CsatFactory
+
+    account = portfolio["mine"]
+    first = ContactFactory(account=account, full_name="First Rater")
+    second = ContactFactory(account=account, full_name="Second Rater")
+    CsatFactory(account=account, contact=first, score=5, recorded_on=today())
+    CsatFactory(account=account, contact=second, score=2, recorded_on=today())
+
+    login(client, people["csm"])
+    response = client.get(reverse("health:panel", args=[account.pk]))
+
+    (latest,) = response.context["csat_quarters"][:1]
+    assert str(latest.average) == "3.50"
+    assert latest.voices == 2
+    assert "3.50" in response.content.decode()

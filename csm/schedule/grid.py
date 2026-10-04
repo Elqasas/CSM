@@ -78,3 +78,119 @@ def add_months(day: date, months: int) -> date:
     year = day.year + index // 12
     month = index % 12 + 1
     return date(year, month, min(day.day, monthrange(year, month)[1]))
+
+
+# ---------------------------------------------------------------------------
+# The hours of a day
+# ---------------------------------------------------------------------------
+
+MINUTES_PER_DAY = 24 * 60
+
+#: How long a task with a clock time is drawn. A task has a due time and no
+#: duration; half an hour is long enough to read and short enough not to claim
+#: the afternoon.
+TASK_MINUTES = 30
+
+#: The shortest block drawn. A five-minute meeting is still a line somebody has
+#: to be able to read, and two of them back to back must not overprint.
+MIN_MINUTES = 20
+
+
+@dataclass(frozen=True)
+class Span:
+    """Something with a start and an end on one day, in minutes from midnight."""
+
+    start: int
+    end: int
+    kind: str
+    item: object
+
+
+@dataclass(frozen=True)
+class Placed:
+    """A span with its place in the column: which lane, out of how many.
+
+    Positions are percentages of the day, so the template draws a block with
+    nothing but ``top``/``height``/``left``/``width`` and the hour height can
+    change in CSS without touching any of this.
+    """
+
+    span: Span
+    lane: int
+    lanes: int
+
+    @property
+    def kind(self) -> str:
+        return self.span.kind
+
+    @property
+    def item(self):
+        return self.span.item
+
+    @property
+    def top(self) -> float:
+        return round(self.span.start / MINUTES_PER_DAY * 100, 4)
+
+    @property
+    def height(self) -> float:
+        return round((_drawn_end(self.span) - self.span.start) / MINUTES_PER_DAY * 100, 4)
+
+    @property
+    def left(self) -> float:
+        return round(self.lane / self.lanes * 100, 4)
+
+    @property
+    def width(self) -> float:
+        return round(100 / self.lanes, 4)
+
+    @property
+    def is_short(self) -> bool:
+        """Under three-quarters of an hour: one line, no second row of detail."""
+        return self.span.end - self.span.start < 45
+
+
+def _drawn_end(span: Span) -> int:
+    return min(max(span.end, span.start + MIN_MINUTES), MINUTES_PER_DAY)
+
+
+def minutes(moment) -> int:
+    """A ``time`` (or datetime) as minutes past midnight."""
+    return moment.hour * 60 + moment.minute
+
+
+def lay_out(spans) -> list[Placed]:
+    """Side by side where they overlap, full width where they do not.
+
+    Spans are grouped into clusters that overlap one another, transitively; each
+    span takes the first lane free at its start, and every span in a cluster is
+    as wide as the cluster has lanes. Two spans sharing nothing in time never
+    narrow each other, which is the usual calendar's behaviour and the one a
+    reader expects. Overlap is judged on the *drawn* end, so a five-minute
+    meeting followed at once by another does not overprint.
+    """
+    ordered = sorted(spans, key=lambda s: (s.start, -_drawn_end(s)))
+    out: list[Placed] = []
+    cluster: list[tuple[Span, int]] = []
+    lane_ends: list[int] = []
+    cluster_end = -1
+
+    def flush():
+        out.extend(Placed(span=span, lane=lane, lanes=len(lane_ends)) for span, lane in cluster)
+
+    for span in ordered:
+        if cluster and span.start >= cluster_end:
+            flush()
+            cluster, lane_ends = [], []
+        end = _drawn_end(span)
+        for lane, lane_end in enumerate(lane_ends):
+            if lane_end <= span.start:
+                lane_ends[lane] = end
+                break
+        else:
+            lane = len(lane_ends)
+            lane_ends.append(end)
+        cluster.append((span, lane))
+        cluster_end = max(cluster_end, end)
+    if cluster:
+        flush()
+    return out

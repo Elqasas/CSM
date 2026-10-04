@@ -11,6 +11,7 @@ import pytest
 from django.urls import reverse
 
 from csm.contacts.models import Contact
+from csm.core.clock import today
 from csm.core.modal import MODAL_TARGET
 from csm.tasks.models import Task
 from tests.factories import AccountFactory, UserFactory
@@ -36,7 +37,7 @@ def _task_post(**extra):
     return {
         "task_type": "CALL",
         "title": "Ring the sponsor",
-        "due_date": "2026-10-01",
+        "due_date": today().isoformat(),
         "category": "CLIENT_FACING",
         "priority": "MEDIUM",
         "progress": "NOT_STARTED",

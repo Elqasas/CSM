@@ -55,6 +55,7 @@ LOCAL_APPS = [
     "csm.schedule",
     "csm.importer",
     "csm.integrations",
+    "csm.meetings",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -90,6 +91,8 @@ TEMPLATES = [
                 "csm.core.views.ui_state",
                 "csm.core.modal.base_template",
                 "csm.notifications.views.unread_count",
+                "csm.integrations.views.jira_context",
+                "csm.core.assets.asset_version",
             ],
         },
     },
@@ -179,6 +182,28 @@ Q_CLUSTER = {
     "retry": 900,
     "catch_up": False,
 }
+
+# --------------------------------------------------------------------------
+# Jira Service Management
+# --------------------------------------------------------------------------
+# Tickets come from JSM once all three of the site, the API user's email and an
+# API token are set (csm/integrations/jira/settings.py). Until then tickets are
+# entered by hand; once they are, manual entry is withdrawn. Leave all three
+# empty for "off" - two of three is refused rather than read as off.
+
+JIRA_BASE_URL = env("JIRA_BASE_URL", default="")
+JIRA_EMAIL = env("JIRA_EMAIL", default="")
+JIRA_API_TOKEN = env("JIRA_API_TOKEN", default="")
+# Limit the sync to these projects. Empty means every project the API user sees.
+JIRA_PROJECT_KEYS = env.list("JIRA_PROJECT_KEYS", default=[])
+# The Organizations custom field id, e.g. customfield_10002. Discovered from the
+# site when empty; set it only if discovery picks the wrong field.
+JIRA_ORGANIZATIONS_FIELD = env("JIRA_ORGANIZATIONS_FIELD", default="")
+# Jira issue types that score as a Bug (x3). Every other type scores x1.
+JIRA_BUG_ISSUE_TYPES = env.list("JIRA_BUG_ISSUE_TYPES", default=["Bug"])
+# How far back the very first sync reads closed issues. Open ones are read
+# whatever their age.
+JIRA_BACKFILL_DAYS = env.int("JIRA_BACKFILL_DAYS", default=90)
 
 # --------------------------------------------------------------------------
 # Email

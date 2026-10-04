@@ -15,6 +15,7 @@
         {% endcomment %}
         What is planned and what happened, by day. Outlined entries are repeats
         that have not been raised yet.
+        {% if microsoft_on %}Meetings from your own Outlook calendar are marked with the Teams or calendar icon.{% endif %}
       </p>
     </div>
     <div class="d-flex gap-2">
@@ -31,18 +32,18 @@
       <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Range">
         {% for value, label in modes %}
           <a class="btn btn-outline-secondary {% if mode == value %}active{% endif %}"
-             href="?view={{ value }}&amp;date={{ focus|date:'Y-m-d' }}">{{ label }}</a>
+             href="?view={{ value }}&amp;date={{ focus|date:'Y-m-d' }}&amp;source={{ source }}">{{ label }}</a>
         {% endfor %}
       </div>
 
       <div class="btn-group btn-group-sm" role="group" aria-label="Move">
         <a class="btn btn-outline-secondary"
-           href="?view={{ mode }}&amp;date={{ prev|date:'Y-m-d' }}" aria-label="Previous">
+           href="?view={{ mode }}&amp;date={{ prev|date:'Y-m-d' }}&amp;source={{ source }}" aria-label="Previous">
           <i class="bi bi-chevron-left"></i>
         </a>
-        <a class="btn btn-outline-secondary" href="?view={{ mode }}">Today</a>
+        <a class="btn btn-outline-secondary" href="?view={{ mode }}&amp;source={{ source }}">Today</a>
         <a class="btn btn-outline-secondary"
-           href="?view={{ mode }}&amp;date={{ next|date:'Y-m-d' }}" aria-label="Next">
+           href="?view={{ mode }}&amp;date={{ next|date:'Y-m-d' }}&amp;source={{ source }}" aria-label="Next">
           <i class="bi bi-chevron-right"></i>
         </a>
       </div>
@@ -53,8 +54,26 @@
         {% else %}{{ focus|date:"F Y" }}{% endif %}
       </strong>
 
+      {% if microsoft_on %}
+        {% comment %}
+        Where an entry came from. Platform is what Bousla holds - tasks, the
+        log, projected repeats; Microsoft 365 is the reader's own Outlook
+        calendar. The choice travels with every other link on the page.
+        {% endcomment %}
+        <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Source">
+          {% for value, label in sources %}
+            <a class="btn btn-outline-secondary {% if source == value %}active{% endif %}"
+               href="?view={{ mode }}&amp;date={{ focus|date:'Y-m-d' }}&amp;source={{ value }}">
+              {% if value == "microsoft" %}<i class="bi bi-microsoft-teams" aria-hidden="true"></i>{% elif value == "platform" %}<i class="bi bi-compass" aria-hidden="true"></i>{% endif %}
+              {{ label }}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
       <span class="small text-body-secondary ms-auto">
-        {{ load }} item{{ load|pluralize }} planned in this range
+        {% if source != "microsoft" %}{{ load }} item{{ load|pluralize }} planned{% endif %}{% if source == "all" and microsoft_on %}, {% endif %}{% if source != "platform" and microsoft_on %}{{ meeting_load }} meeting{{ meeting_load|pluralize }}{% endif %}
+        in this range
       </span>
     </div>
   </div>
@@ -81,7 +100,7 @@
                              {% if day.date.weekday in weekend %}cal-weekend{% endif %}
                              {% if day.date == today %}cal-today{% endif %}">
                     <div class="d-flex justify-content-between align-items-center">
-                      <a class="cal-daynum" href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}">
+                      <a class="cal-daynum" href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}&amp;source={{ source }}">
                         {{ day.date|date:"j" }}
                       </a>
                     </div>
@@ -91,7 +110,7 @@
                         {% with extra=bucket|entry_overflow:3 %}
                           {% if extra %}
                             <a class="small text-body-secondary"
-                               href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}">
+                               href="?view=day&amp;date={{ day.date|date:'Y-m-d' }}&amp;source={{ source }}">
                               +{{ extra }} more
                             </a>
                           {% endif %}
@@ -107,25 +126,70 @@
       </div>
     </div>
   {% else %}
-    <div class="row g-3">
-      {% for day in days %}
-        <div class="{% if mode == 'day' %}col-12{% else %}col-12 col-lg{% endif %}">
-          <div class="card h-100 {% if day == today %}cal-today{% endif %}">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span>{{ day|date:"D j M" }}</span>
-              {% if day == today %}<span class="badge text-bg-primary">Today</span>{% endif %}
-            </div>
-            <div class="card-body">
-              {% with bucket=by_day|dictkey:day %}
-                {% include "schedule/_day_entries.html" with bucket=bucket limit="" %}
-                {% if not bucket %}
-                  <p class="small text-body-secondary mb-0">Nothing.</p>
+    {% comment %}
+    Week and day, by the hour. Anything without a clock time - the activity
+    log, untimed tasks, all-day events - sits in the row above the hours; the
+    rest is placed by its start and length, side by side where it overlaps.
+    The header rows reserve the scrollbar's width so their columns line up with
+    the scrolling body under them.
+    {% endcomment %}
+    <div class="card cal-week {% if mode == 'week' %}is-week{% endif %}" style="--cal-days: {{ columns|length }}">
+      <div class="cal-week-scroll">
+        <div class="cal-week-inner">
+          <div class="cal-row cal-head">
+            <div class="cal-gutter"></div>
+            {% for column in columns %}
+              <div class="cal-colhead {% if column.is_today %}is-today{% endif %} {% if column.date.weekday in weekend %}cal-weekend{% endif %}">
+                <a href="?view=day&amp;date={{ column.date|date:'Y-m-d' }}&amp;source={{ source }}">
+                  <span class="cal-colhead-day">{{ column.date|date:"D" }}</span>
+                  <span class="cal-colhead-num">{{ column.date|date:"j" }}</span>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="cal-row cal-allday">
+            <div class="cal-gutter cal-gutter-label">All day</div>
+            {% for column in columns %}
+              <div class="cal-allday-cell {% if column.date.weekday in weekend %}cal-weekend{% endif %}">
+                {% if column.has_all_day %}
+                  {% include "schedule/_day_entries.html" with bucket=column.all_day limit="" %}
                 {% endif %}
-              {% endwith %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="cal-hours" data-scroll-to="{{ scroll_to }}">
+            <div class="cal-row cal-body">
+              <div class="cal-gutter">
+                {% for hour in hours %}
+                  <div class="cal-hour-label">{% if hour %}{{ hour|stringformat:"02d" }}:00{% endif %}</div>
+                {% endfor %}
+              </div>
+              {% for column in columns %}
+                <div class="cal-daycol {% if column.is_today %}is-today{% endif %} {% if column.date.weekday in weekend %}cal-weekend{% endif %}">
+                  {% for placed in column.placed %}
+                    {% include "schedule/_timed.html" %}
+                  {% endfor %}
+                  {% if column.is_today %}
+                    <div class="cal-now" style="top: {{ now_top|stringformat:'.4f' }}%" aria-hidden="true"></div>
+                  {% endif %}
+                </div>
+              {% endfor %}
             </div>
           </div>
         </div>
-      {% endfor %}
+      </div>
     </div>
+    <script>
+      // Open the hours at the working day (or just before the earliest entry)
+      // rather than at midnight, which is where nothing ever is.
+      document.querySelectorAll(".cal-hours[data-scroll-to]").forEach(function (el) {
+        // A quarter of an hour of headroom, so the opening hour's label is
+        // not cut in half by the top edge.
+        var minutes = Math.max((parseInt(el.dataset.scrollTo, 10) || 0) - 15, 0);
+        el.scrollTop = el.scrollHeight * minutes / 1440;
+      });
+    </script>
   {% endif %}
 {% endblock %}

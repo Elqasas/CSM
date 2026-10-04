@@ -16,7 +16,7 @@ from decimal import Decimal
 
 from csm.core.enums import FactorId, FactorSetId
 
-ENGINE_VERSION = "1.1.0"
+ENGINE_VERSION = "1.3.0"
 
 # ---------------------------------------------------------------------------
 # Colour to points
@@ -92,23 +92,43 @@ WEEKLY_CONTACT_MAX_DAYS = 7
 #   green  m >= r          (100% or better; over-achievement is never penalised)
 #   yellow 2m >= r         (50% to 99%)
 #   red    otherwise       (under 50%)
-# The window is inclusive on both ends: a meeting exactly 30 days ago counts.
-
-MEETING_WINDOW_DAYS = 30
-
-# A count-in-window factor gets no help from the baseline floor, so a managed
-# account imported today would be zero percent compliant and red on day one.
-# That contradicts the clean-start rule, so the factor is green for this many
-# days after the baseline date.
-MEETING_BASELINE_GRACE_DAYS = 30
+# The window is the calendar month of the as-of date, from its 1st to as_of
+# inclusive: on 30 September, meetings from 1 to 30 September count and one on
+# 31 August does not. On the 1st the count starts again from zero, so a managed
+# account is red on that factor until the month's first meeting is completed.
+#
+# There is no grace window after the baseline date (removed in 1.2.0): only a
+# completed Meeting activity moves this factor, never filling in dates.
 
 # ---------------------------------------------------------------------------
 # CSAT
 # ---------------------------------------------------------------------------
 
-CSAT_GREEN_MIN = 4  # 4 or 5
-CSAT_YELLOW = 3
-# Ratings older than this are treated as absent. Set to None to disable expiry.
+# Scored on the latest calendar quarter that holds a rating (1.3.0; earlier
+# versions read the single newest rating). Within it, each contact's latest
+# rating counts once - one person asked twice is still one voice - and a rating
+# naming no contact counts on its own. The average of those is banded:
+#   green  average >= 4.00
+#   yellow average >= 3.00
+#   red    otherwise
+# A quarter stays in force until the next one has a rating, so early in a new
+# quarter, before the round is collected, last quarter's result holds.
+#
+# Unlike every other factor, CSAT's points are proportional to the average
+# rather than stepped by its colour, so each tenth of a point moves the score:
+#   from 2.00 up:  points = 25 x (average - 1)   2.00 is 25, 3.00 is 50,
+#                                                4.00 is 75, 5.00 is 100
+#   below 2.00:    a straight line from 5 at 1.00 up to 25 at 2.00
+# The lowest possible average is not zero: 1.00 earns 5 points, which is 1% of
+# the final score on a managed account (weight 20%) and 1.25% on a non-managed
+# one (weight 25%). The colour is still banded below; it is what the red-factor
+# cap counts.
+CSAT_POINTS_PER_STEP = Decimal("25")
+CSAT_POINTS_AT_ONE = Decimal("5")
+CSAT_GREEN_MIN = Decimal("4.00")
+CSAT_YELLOW_MIN = Decimal("3.00")
+# A quarter whose newest rating is older than this is treated as absent. Set to
+# None to disable expiry.
 CSAT_VALIDITY_DAYS = 180
 # No rating on record scores yellow: zero would redline the whole portfolio at
 # go-live before anyone has collected a rating, and 100 would hide real risk.

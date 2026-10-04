@@ -13,9 +13,9 @@ development instead of quietly rendering an empty cell in production.
 from __future__ import annotations
 
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
+from django.views.generic import CreateView, DetailView, FormView, ListView, UpdateView, View
 
 from csm.accounts.filters import (
     RENEWAL_PARAM,
@@ -23,8 +23,8 @@ from csm.accounts.filters import (
     apply_sort,
     renewal_quarter_choices,
 )
-from csm.accounts.forms import AccountForm, CustomFieldDefinitionForm
-from csm.accounts.models import AccountCustomFieldDefinition
+from csm.accounts.forms import AccountForm, AccountNoteForm, CustomFieldDefinitionForm
+from csm.accounts.models import AccountCustomFieldDefinition, AccountNote
 from csm.contacts.grids import build_grid, interest_labels
 from csm.contacts.models import Contact
 from csm.core.access import capabilities as cap
@@ -148,6 +148,8 @@ class AccountDetailView(AbilityMixin, DetailView):
             .filter(is_voided=False)
             .order_by("-occurred_on", "-id")[:15]
         )
+        if self.ability.can(cap.NOTE_VIEW):
+            context["notes"] = account.notes.select_related("created_by", "updated_by")
         context["tasks"] = (
             self.ability.visible_tasks()
             .filter(account=account)
@@ -328,3 +330,69 @@ class CustomFieldToggleView(CapabilityRequiredMixin, View):
             f"{definition.name!r}.",
         )
         return redirect("accounts:custom_fields")
+
+
+class _NoteView(AccountScopedMixin):
+    """Notes hang off an account the reader can already see, so a note on a
+    colleague's account is a 404 through ``AccountScopedMixin`` like any other
+    account URL."""
+
+    required_capability = cap.NOTE_EDIT
+    account_url_kwarg = "account_pk"
+
+    def get_note(self):
+        return get_object_or_404(AccountNote, pk=self.kwargs["pk"], account=self.account)
+
+    def done(self):
+        return redirect(safe_next(self.request) or reverse("accounts:detail", args=[self.account.pk]))
+
+
+class NoteCreateView(_NoteView, FormView):
+    template_name = "accounts/note_form.html"
+    form_class = AccountNoteForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["nav"] = "accounts"
+        context["heading"] = "Add note"
+        context["next"] = safe_next(self.request)
+        return context
+
+    def form_valid(self, form):
+        note = form.save(commit=False)
+        note.account = self.account
+        note.created_by = note.updated_by = self.request.user
+        note.save()
+        messages.success(self.request, "Note added.")
+        return self.done()
+
+
+class NoteUpdateView(_NoteView, FormView):
+    template_name = "accounts/note_form.html"
+    form_class = AccountNoteForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.get_note()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["nav"] = "accounts"
+        context["heading"] = "Edit note"
+        context["next"] = safe_next(self.request)
+        return context
+
+    def form_valid(self, form):
+        note = form.save(commit=False)
+        note.updated_by = self.request.user
+        note.save()
+        messages.success(self.request, "Note saved.")
+        return self.done()
+
+
+class NoteDeleteView(_NoteView, View):
+    def post(self, request, account_pk, pk):
+        self.get_note().delete()
+        messages.success(request, "Note deleted.")
+        return self.done()

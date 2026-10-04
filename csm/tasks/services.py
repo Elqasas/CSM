@@ -126,7 +126,7 @@ def assign(task: Task) -> tuple[TaskAssignment, ...]:
 
 
 @transaction.atomic
-def complete_task(task: Task, *, actor) -> Task:
+def complete_task(task: Task, *, actor, occurred_on=None) -> Task:
     if not task.is_open:
         return task
     task.status = TaskStatus.DONE
@@ -156,6 +156,7 @@ def complete_task(task: Task, *, actor) -> Task:
             account_id=task.account_id,
             task_type=str(task.task_type),
             completed_by_id=getattr(actor, "pk", None),
+            occurred_on=occurred_on,
         )
     )
     return task

@@ -62,7 +62,7 @@ class AccountFactory(DjangoModelFactory):
     is_managed_service = False
     csm = factory.SubFactory(UserFactory, csm=True)
     acm = factory.SubFactory(UserFactory, acm=True)
-    # Old enough that the meeting-attendance grace window has expired.
+    # A year back, so day-count factors score on real data.
     scoring_baseline_date = factory.LazyFunction(
         lambda: dt.date.today() - dt.timedelta(days=365)
     )

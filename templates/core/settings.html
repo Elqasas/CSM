@@ -61,7 +61,7 @@
     </div>
   </div>
 
-  {% if "import.run" in ability.capabilities or "export.run" in ability.capabilities or "user.manage" in ability.capabilities or "custom_field.manage" in ability.capabilities %}
+  {% if "import.run" in ability.capabilities or "export.run" in ability.capabilities or "user.manage" in ability.capabilities or "custom_field.manage" in ability.capabilities or "integration.manage" in ability.capabilities %}
     <h2 class="h6 text-uppercase text-body-secondary small">Administration</h2>
     <div class="row g-3">
       {% if "import.run" in ability.capabilities %}
@@ -121,6 +121,22 @@
               <div class="fw-medium">Custom fields</div>
               <p class="small text-body-secondary mb-0">
                 Free-text fields you've named, shown on every account.
+              </p>
+            </div>
+          </a>
+        </div>
+      {% endif %}
+
+      {% if "integration.manage" in ability.capabilities %}
+        <div class="col-12 col-md-6 col-xl-4">
+          <a class="card h-100 text-decoration-none settings-card"
+             href="{% url 'integrations:status' %}">
+            <div class="card-body">
+              <div class="settings-icon"><i class="bi bi-plug"></i></div>
+              <div class="fw-medium">Integrations</div>
+              <p class="small text-body-secondary mb-0">
+                Jira Service Management tickets and Microsoft 365 calendars:
+                connections, last sync, and what did not match.
               </p>
             </div>
           </a>

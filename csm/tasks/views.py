@@ -133,6 +133,16 @@ class TaskCompleteView(CapabilityRequiredMixin, FormView):
         return redirect(safe_next(request) or reverse("tasks:list"))
 
 
+def log_after_the_fact(task, form, *, actor):
+    """Close a task created as Completed, logging it on the day it happened.
+
+    The date on the form is when it took place - the form allows a past one
+    only for a completed task - so the log entry carries it rather than today.
+    A future date is clamped to today by the log itself.
+    """
+    complete_task(task, actor=actor, occurred_on=form.cleaned_data["due_date"])
+
+
 class SeriesStartMixin:
     """Turning the repeat block on a form into a series and its first occurrence.
 
@@ -238,7 +248,7 @@ class TaskCreateView(SeriesStartMixin, AccountScopedMixin, FormView):
             # than saving the label is what writes the log entry and moves the
             # score - setting the column by hand would leave a task that reads
             # Completed and never happened as far as the account is concerned.
-            complete_task(task, actor=self.request.user)
+            log_after_the_fact(task, form, actor=self.request.user)
             messages.success(self.request, f"Logged: {task.title}")
         else:
             messages.success(self.request, f"Created: {task.title}")
@@ -494,6 +504,12 @@ class TaskCreateAnywhereView(SeriesStartMixin, CapabilityRequiredMixin, FormView
             )
         if task is None:
             messages.warning(self.request, "That task already exists.")
+        elif form.cleaned_data["progress"] == TaskProgress.COMPLETED:
+            # Through the service, as on the account page. Saving the label
+            # alone left a task that read Completed, stayed open, and never
+            # reached the log or the score.
+            log_after_the_fact(task, form, actor=self.request.user)
+            messages.success(self.request, f"Logged: {task.title}")
         else:
             messages.success(self.request, f"Created: {task.title}")
         # Activities, not the task queue: that is the page this now belongs to,

@@ -20,7 +20,9 @@ through any view.
               weighted {{ ticket_weight }}
             </span>
           </span>
-          {% if "ticket.edit" in ability.capabilities %}
+          {% if jira_enabled %}
+            <span class="small text-body-secondary">From Jira</span>
+          {% elif "ticket.edit" in ability.capabilities %}
             <a data-modal class="btn btn-sm btn-outline-primary"
                href="{% url 'engagement:ticket_create' account.pk %}?next={{ request.path|urlencode }}"
                title="Add a ticket" aria-label="Add a ticket">
@@ -35,15 +37,24 @@ through any view.
                 <span class="badge {% if ticket.ticket_kind == 'BUG' %}text-bg-danger{% else %}text-bg-light{% endif %}">
                   {{ ticket.get_ticket_kind_display }}
                 </span>
+                {% if ticket.external_key %}
+                  {% if jira_browse_base %}
+                    <a class="small font-monospace" href="{{ jira_browse_base }}/{{ ticket.external_key }}"
+                       target="_blank" rel="noopener">{{ ticket.external_key }}</a>
+                  {% else %}
+                    <span class="small font-monospace">{{ ticket.external_key }}</span>
+                  {% endif %}
+                {% endif %}
                 <span class="{% if ticket.status == 'CLOSED' %}text-body-secondary text-decoration-line-through{% endif %}">
                   {{ ticket.title }}
                 </span>
                 <div class="small text-body-secondary">
+                  {% if ticket.external_status %}{{ ticket.external_status }} &middot; {% endif %}
                   opened {{ ticket.opened_on|date:"j M Y" }}
                   {% if ticket.closed_on %} &middot; closed {{ ticket.closed_on|date:"j M Y" }}{% endif %}
                 </div>
               </div>
-              {% if "ticket.edit" in ability.capabilities %}
+              {% if "ticket.edit" in ability.capabilities and not ticket.is_synced %}
                 <div class="d-flex gap-1 flex-shrink-0">
                   {% if ticket.status != "CLOSED" %}
                     <form method="post" action="{% url 'engagement:ticket_close' account.pk ticket.pk %}">
@@ -52,6 +63,7 @@ through any view.
                     </form>
                   {% endif %}
                   <form method="post" action="{% url 'engagement:delete' account.pk 'ticket' ticket.pk %}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                   </form>
@@ -60,7 +72,11 @@ through any view.
             </li>
           {% empty %}
             <li class="list-group-item text-body-secondary">
-              No tickets. Zero open tickets is green.
+              {% if jira_enabled %}
+                No tickets from Jira for this client. Zero open tickets is green.
+              {% else %}
+                No tickets. Zero open tickets is green.
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
@@ -79,6 +95,43 @@ through any view.
             </a>
           {% endif %}
         </div>
+        {% if csat_quarters %}
+          {% comment %}
+          The factor scores the newest quarter here: each contact's latest
+          rating in it, averaged. Older quarters are shown for the trend and
+          count for nothing.
+          {% endcomment %}
+          <div class="table-responsive border-bottom">
+            <table class="table table-sm mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Quarter</th>
+                  <th scope="col">Average</th>
+                  <th scope="col">Contacts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for q in csat_quarters %}
+                  <tr>
+                    <td>
+                      {{ q.label }}
+                      {% if forloop.first %}<span class="small text-body-secondary">&middot; scored</span>{% endif %}
+                    </td>
+                    <td>
+                      <span class="badge
+                        {% if q.color == 'GREEN' %}text-bg-success
+                        {% elif q.color == 'YELLOW' %}text-bg-warning
+                        {% else %}text-bg-danger{% endif %}">{{ q.average }}</span>
+                    </td>
+                    <td class="small text-body-secondary">
+                      {{ q.voices }}{% if q.ratings != q.voices %} ({{ q.ratings }} ratings){% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
         <ul class="list-group list-group-flush">
           {% for rating in csat %}
             <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
@@ -97,6 +150,7 @@ through any view.
               </div>
               {% if "csat.record" in ability.capabilities %}
                 <form method="post" action="{% url 'engagement:delete' account.pk 'csat' rating.pk %}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                 </form>
@@ -136,6 +190,7 @@ through any view.
               </div>
               {% if "adoption.record" in ability.capabilities %}
                 <form method="post" action="{% url 'engagement:delete' account.pk 'adoption' event.pk %}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger" type="submit">&times;</button>
                 </form>

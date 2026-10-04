@@ -9,6 +9,7 @@ venv/
 htmlcov/
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3.bak-*
 .env
 media/
 staticfiles/

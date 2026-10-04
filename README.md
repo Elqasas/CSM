@@ -1,4 +1,4 @@
-# Customer Health & Account Management Platform
+# Bousla — Customer Health & Account Management Platform
 
 Internal platform for managing the health and relationships of dPhish's client
 portfolio. It centralises account data, scores account health automatically from
@@ -127,6 +127,8 @@ and both insert.
 | Managed account with no meeting frequency | Factor omitted, scored out of 80, weights not redistributed, and capped at Watch. |
 | Timezone for day counts | Africa/Cairo. All storage stays UTC; `core/clock.py` is the only conversion point. |
 | Missing or stale CSAT | Scored 50, flagged. Zero would redline the portfolio at go-live; 100 would hide real risk. |
+| CSAT with several raters | The latest calendar quarter holding a rating, each contact's latest rating in it counted once, averaged: 4.00+ green, 3.00+ yellow. Several stakeholders rate each quarter, so the newest single rating let whoever was typed in last decide. Last quarter holds until the next round is collected. |
+| CSAT points | Proportional, not stepped: 25 x (average - 1) from 2.00 up - so 2.00 is 25, 3.00 is 50, 4.00 is 75, 5.00 is 100 - and below 2.00 a line from 5 points at 1.00 to 25 at 2.00, so the worst average still adds 1% on a managed account (1.25% non-managed) rather than nothing. The colour stays banded and is what the red-factor cap counts. |
 | Task emails | One digest per person per morning, plus an immediate standalone email for every health alert. |
 | Medium on the power/interest grid | Counts as high influence, low interest. Medium/Medium is Keep satisfied. |
 | An unassessed contact | Influence and interest are nullable with no default. Unassessed is not Medium. |
@@ -199,9 +201,11 @@ otherwise have surfaced in production.
 - **`scoring_baseline_date`** generalises the import baseline rule. The spec sets
   a baseline at import but not on the Onboarding to Active transition, where an
   account with no history in its new stage would read as months of neglect.
-- **Meeting Attendance gets a thirty-day grace window** after the baseline. It
-  counts events in a window, so the baseline floor does not help it and a managed
-  account imported today would be zero percent compliant on day one.
+- **Meeting Attendance has no grace window.** Only completed Meeting activities
+  in the current calendar month count (1st to today, restarting at zero on the
+  1st); filling in the frequency or the account's dates
+  earns nothing, so a managed account with no meeting yet is red. (Engine 1.1.0
+  and earlier scored it green for 30 days after the baseline.)
 - **Quarterly rollover.** If the meeting date goes stale and nobody sets a new
   one, the account would silently stop receiving reminders forever. A nudge task
   is created instead.
@@ -385,12 +389,38 @@ The interface follows the operating system's light or dark preference and has a
 toggle that overrides it. The chart palette ships validated steps for both, so
 dark mode is a selected design rather than an inverted one.
 
+**Jira Service Management** feeds tickets. Every 15 minutes `sync_jira` reads
+the issues raised under each JSM Organization and writes them as tickets on the
+client of the same name (case and spacing ignored). A Bug scores three in Open
+Tickets and every other issue type one. Once Jira is configured, tickets are no
+longer entered by hand, and synced ones close in Jira, not here. Organizations
+that match no client, or more than one, are listed on `/integrations/` (Admin)
+rather than guessed.
+
+**Microsoft 365 calendars and Teams attendance** are built on the shape
+settled above. `sync_teams` reads each active user's Outlook calendar by email
+into `csm/meetings/` (one `Meeting` per occurrence, one `CalendarEntry` per
+person holding it) and shows it on that person's calendar only, with an All /
+Platform / Microsoft 365 filter. A Teams meeting counts as client contact only
+when its attendance report lists a contact's stored email - then, and only then,
+the sync writes a `MEETING` activity (`source=TEAMS`). Invited but absent counts
+for nothing. An Admin connects it on **Settings → Integrations → Microsoft 365**
+with an Entra ID app registration; the page lists the four Graph permissions and
+the Teams access policy attendance needs.
+
+To connect Jira, an Admin opens **Settings → Integrations**, enters the Jira site,
+the account email and an API token (stored encrypted, never shown again),
+presses **Test connection**, then ticks **Use Jira for tickets** and saves. Run
+`manage.py sync_jira --full` once afterwards for the first complete read. The
+`JIRA_*` variables in `.env.example` still work for a deployment that prefers
+them, until the page is first saved.
+
 Not built yet:
 
-- **Integration seams**: the provider interfaces and `IntegrationLink`. The event
-  bus they will subscribe to already exists. Deliberately deferred; the shape
-  they will take is settled under
-  [Meetings, tasks and the Teams integration](#meetings-tasks-and-the-teams-integration).
+- **Outlook email, and writing to calendars.** Microsoft 365 is read-only:
+  calendars in, Teams attendance in. Nothing is booked or sent from Bousla.
+- **Pushing to Jira.** The sync is read-only; Internal tasks are not yet sent
+  out as issues (`Task.jira_ticket_id` stays reserved).
 
 ## Open questions
 
