@@ -46,6 +46,7 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.HEALTH_OVERRIDE,
             cap.LIFECYCLE_EDIT,
             cap.DASHBOARD_VIEW,
+            cap.MYDAY_VIEW,
             cap.IMPORT_RUN,
             cap.EXPORT_RUN,
         }
@@ -63,6 +64,7 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.TASK_DELETE,
             cap.TASK_COMPLETE,
             cap.DASHBOARD_VIEW,
+            cap.MYDAY_VIEW,
             cap.IMPORT_RUN,
             cap.EXPORT_RUN,
             # Deliberately absent: HEALTH_VIEW, HEALTH_OVERRIDE, LIFECYCLE_EDIT,
@@ -88,6 +90,8 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.NOTE_VIEW,
             cap.DASHBOARD_VIEW,
             cap.EXPORT_RUN,
+            # Deliberately absent: MYDAY_VIEW. A manager holds no queue of their
+            # own, so the landing page and the logo take them to Analytics.
         }
     ),
     # Everything, including the one capability nobody else holds. Written as

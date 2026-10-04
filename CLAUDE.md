@@ -19,7 +19,7 @@ All commands assume the checked-in virtualenv. On Windows the interpreter is
 ### Tests and lint
 
 ```bash
-.venv/Scripts/python -m pytest                              # full suite, 1041 tests
+.venv/Scripts/python -m pytest                              # full suite, 1098 tests
 .venv/Scripts/python -m pytest tests/test_health_engine.py  # one file
 .venv/Scripts/python -m pytest tests/test_access.py::test_only_the_access_package_interprets_role_or_seniority
 .venv/Scripts/python -m pytest -k "csat and stale"          # by name
@@ -59,6 +59,7 @@ manage.py generate_tasks          # renewal, quarterly and rollover reminders
 manage.py send_due_notifications  # 07:00 digests, then drain the email outbox
 manage.py send_task_reminders     # every 5 min: the hour/half-hour before a timed task
 manage.py sync_jira [--full]      # every 15 min: JSM issues into tickets; no-op until configured
+manage.py sync_teams              # every 15 min: Outlook calendars + Teams attendance; no-op until configured
 ```
 
 **Creating a task notifies nobody.** Only a health alert is announced at the
@@ -158,8 +159,8 @@ and presenters ask that object; they never inspect the user's role.
 - **Activity visibility** is `Ability.visible_activities()`. An ACM sees only
   what a future Outlook/Teams sync would log — `source` values other than
   `MANUAL` — never a CSM's own record of a call or meeting, which is exactly
-  the log the health engine reads. Since no integration writes those sources
-  yet, an ACM's activity feed is empty until one does.
+  the log the health engine reads. The Teams sync writes `source=TEAMS`
+  rows for meetings a client contact attended, so those are what an ACM sees.
 
 The hard rule behind all of it: an ACM owns the commercial renewal and must
 never see any health signal, including in aggregated dashboard cards.
@@ -398,7 +399,12 @@ each view. The renewal quarter is on both the account list and analytics, and
 written twice it drifts - one page reading `Q4` and the other `2026-4`, or one
 treating an unparseable value as "everything" and the other as "nothing" (it is
 everything: a filter the page cannot read must leave the page as it was, never
-make the portfolio look empty). Choice lists come from `ability.accounts()`
+make the portfolio look empty). The account list still takes one `renewal=YYYY-Q`;
+analytics asks for the quarter (`rq`, Q1-Q4 buttons) and the year (`ry`, a list)
+separately, each optional - both parsed in `filters.py`. A renewal-chart bar sets
+both at once through a paired `toggle_filter "rq,ry" "3,2026"`. Health status,
+class and quarter there are segmented links; the lists auto-submit and carry
+everything else as hidden inputs (`HIDDEN_FILTER_PARAMS`). Choice lists come from `ability.accounts()`
 *before* the filter, or selecting a value collapses the control to that value
 with no way back. The CSM/ACM selects are scoped the same way: a list of every
 CSM in the company would name colleagues whose portfolios the reader cannot
@@ -474,7 +480,9 @@ from a CDN; no JavaScript build step.
 
 Also built: the **analytics dashboard** (`/analytics/`) — twelve cards, one
 shared filter, a per-role card registry, server-rendered inline SVG charts.
-`/` is a separate working landing page ("My day"), not the analytics grid.
+`/` is a separate working landing page ("My day"), not the analytics grid. It
+needs `myday.view`, which a Manager does not hold: sign-in, the logo and `/` send
+a manager to Analytics, and no page offers them My day.
 
 Also built: the **importer** (`/import/`, any CSM, CSM Senior or ACM — an ACM's
 `import.run` is narrowed by `Ability.importable_kinds()` to contacts only, since
@@ -504,7 +512,44 @@ palettes are validated steps, not an inversion.
 Also built: the **Jira Service Management sync** (`csm/integrations/jira/`,
 `/integrations/` for Admin). Read-only and polled, see below.
 
-Not built: Teams and Outlook. The Teams shape is settled in README.md.
+Also built: the **Microsoft 365 calendar sync** (`csm/integrations/teams/`,
+`/integrations/microsoft/` for Admin) and the **calendar by the hour** - week and
+day views are a time grid with an all-day row, and an All / Platform /
+Microsoft 365 filter (`?source=`). See below.
+
+### Outlook meetings and Teams attendance
+
+`sync_teams` reads every active user's Outlook calendar - matched by the user's
+email, app-only Graph credentials an Admin enters once - 30 days back and 90
+ahead, into `csm/meetings/`: one `Meeting` per `iCalUId`, one `CalendarEntry`
+per person holding it. **A person sees only meetings in their own calendar**;
+nothing in `core/access` widens that, a manager included. Private events keep
+no subject. A calendar that could not be read (no mailbox, 403) is left as it
+was, never emptied.
+
+`Meeting` is not `Activity` and `health/inputs.py` never reads it. **An
+invitation is not attendance**: when an ended Teams meeting with a contact
+invited has an attendance report, and a contact's *stored email* is in it, the
+sync writes one `MEETING` activity per account (`source=TEAMS`,
+`external_id=meeting:<pk>:account:<pk>`, unique) - that is what moves Meeting
+Attendance. Invited but absent is `NO_SHOW` and logs nothing; no report within
+three days is `UNAVAILABLE`. A settled meeting is never re-judged. The Admin can
+switch counting off. The calendar hides that activity when it already shows
+its meeting.
+
+Graph needs `Calendars.Read`, `User.Read.All`, `OnlineMeetings.Read.All` and
+`OnlineMeetingArtifact.Read.All` (application, admin-consented) plus a Teams
+application access policy for attendance; the page lists the steps. Read the
+connection through `teams/settings.current()`; there is no env fallback. Tests
+use `FakeGraphClient`, or `HttpGraphClient` with an injected transport.
+
+The time grid is `schedule/grid.lay_out()`, pure like `charts.py`: spans in
+minutes, overlapping ones in lanes, positions as percentages of the day. A timed
+task is drawn as `TASK_MINUTES` (30) from its due time. Meeting times reach
+templates as `start_time`/`end_time` (business-local), never the aware instant,
+since `TIME_ZONE` is UTC. Microsoft entries use `--viz-series-2` plus an icon.
+
+Not built: Outlook *email*, and writing to anybody's calendar.
 
 ### Jira tickets come from JSM organizations
 

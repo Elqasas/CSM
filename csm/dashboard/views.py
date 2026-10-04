@@ -16,12 +16,17 @@ import datetime as dt
 
 from django.conf import settings
 from django.db.models import Count, Q
+from django.shortcuts import redirect
 from django.views.generic import TemplateView
 
 from csm.accounts.filters import (
-    RENEWAL_PARAM,
-    apply_renewal_quarter,
-    renewal_quarter_choices,
+    QUARTERS,
+    RENEWAL_QUARTER_PARAM,
+    RENEWAL_YEAR_PARAM,
+    apply_renewal_parts,
+    parse_quarter,
+    parse_year,
+    renewal_year_choices,
 )
 from csm.contacts.models import Contact
 from csm.core.access import capabilities as cap
@@ -67,7 +72,18 @@ def clock_reading(zone: str, *, twelve_hour: bool = False) -> str:
 
 
 class DashboardView(AbilityMixin, TemplateView):
+    """"My day": the reader's own queue. Also where sign-in and the logo land.
+
+    A reader without ``myday.view`` - a manager, who owns no queue - is sent on
+    to Analytics, so the landing URL stays one URL for everybody.
+    """
+
     template_name = "dashboard/index.html"
+
+    def get(self, request, *args, **kwargs):
+        if not self.ability.can(cap.MYDAY_VIEW):
+            return redirect("dashboard:analytics")
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -171,6 +187,16 @@ CHART_FILTERS = (
 UNSET = "none"
 
 
+#: What the analytics filter form carries as hidden inputs: every parameter the
+#: page reads that is not one of the form's own lists. Without them, changing
+#: the country would drop the class button, a chart click, or a card's own
+#: quarter.
+HIDDEN_FILTER_PARAMS = (
+    "status", "class", "rq", "deployment", "license", "stage", "managed",
+    "quarter", "quarter_year", "renewal_year", "sort",
+)
+
+
 class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
     """Section 8: one filter, many cards, per-role card visibility."""
 
@@ -216,7 +242,13 @@ class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
         context["carried_params"] = self._carried_params(context["active_filters"])
         context["csm_choices"] = self._owner_choices("csm")
         context["acm_choices"] = self._owner_choices("acm")
-        context["renewal_quarters"] = renewal_quarter_choices(self.ability.accounts())
+        context["hidden_filters"] = [
+            (param, self.request.GET[param].strip())
+            for param in HIDDEN_FILTER_PARAMS
+            if self.request.GET.get(param, "").strip()
+        ]
+        context["quarters"] = QUARTERS
+        context["renewal_years"] = renewal_year_choices(self.ability.accounts())
         context["account_classes"] = AccountClass.choices
         context["health_statuses"] = HealthStatus.choices
         return context
@@ -265,7 +297,11 @@ class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
             elif value.isdigit():
                 qs = qs.filter(**{f"{field}_id": int(value)})
 
-        qs = apply_renewal_quarter(qs, self.request.GET.get(RENEWAL_PARAM))
+        qs = apply_renewal_parts(
+            qs,
+            self.request.GET.get(RENEWAL_QUARTER_PARAM),
+            self.request.GET.get(RENEWAL_YEAR_PARAM),
+        )
 
         return qs
 
@@ -282,7 +318,8 @@ class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
             "managed": self.request.GET.get("managed", ""),
             "csm": self.request.GET.get("csm", ""),
             "acm": self.request.GET.get("acm", ""),
-            "renewal": self.request.GET.get(RENEWAL_PARAM, ""),
+            "rq": self.request.GET.get(RENEWAL_QUARTER_PARAM, ""),
+            "ry": self.request.GET.get(RENEWAL_YEAR_PARAM, ""),
             "quarter": self.request.GET.get("quarter", ""),
             "quarter_year": self.request.GET.get("quarter_year", ""),
         }
@@ -308,7 +345,8 @@ class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
                 "No edition recorded" if v == UNSET else dict(LicenseType.choices).get(v)
             ),
             "managed": {"1": "Managed service", "0": "Not managed"}.get,
-            "renewal": self._renewal_label,
+            "rq": lambda v: f"Renewing in Q{q}" if (q := parse_quarter(v)) else "",
+            "ry": lambda v: f"Renewing in {y}" if (y := parse_year(v)) else "",
             "csm": lambda v: f"CSM: {self._person_name(v)}",
             "acm": lambda v: f"ACM: {self._person_name(v)}",
         }
@@ -340,13 +378,6 @@ class AnalyticsDashboardView(CapabilityRequiredMixin, TemplateView):
             if value:
                 carried.append({"param": param, "value": value, "label": ""})
         return carried
-
-    @staticmethod
-    def _renewal_label(value: str) -> str:
-        from csm.accounts.filters import parse_renewal_quarter
-
-        parsed = parse_renewal_quarter(value)
-        return f"Renewing Q{parsed[1]} {parsed[0]}" if parsed else ""
 
     def _person_name(self, value: str) -> str:
         if value == UNSET:

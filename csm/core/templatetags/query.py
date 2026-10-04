@@ -13,6 +13,19 @@ from django import template
 
 register = template.Library()
 
+def _pairs(param: str, value: str) -> list[tuple[str, str]]:
+    """``("rq,ry", "3,2026")`` -> ``[("rq", "3"), ("ry", "2026")]``.
+
+    A segment can stand for more than one parameter at once: a bar on the
+    renewal chart is "Q3 of 2026", which the page filter holds as a quarter and
+    a year. Comma-joined names and values keep the tags' one-param signature.
+    """
+    names, values = param.split(","), value.split(",")
+    if len(names) != len(values):
+        return []
+    return list(zip(names, values, strict=True))
+
+
 #: Never carried across a filter change. A page number from the previous,
 #: wider result set points into a list that no longer has that many pages.
 DROPPED = ("page",)
@@ -36,11 +49,16 @@ def toggle_filter(context, param: str, value) -> str:
 
     request = context["request"]
     params = request.GET.copy()
+    pairs = _pairs(param, value)
+    if not pairs:
+        return ""
 
-    if params.get(param, "") == value:
-        params.pop(param, None)
+    if all(params.get(name, "") == part for name, part in pairs):
+        for name, _ in pairs:
+            params.pop(name, None)
     else:
-        params[param] = value
+        for name, part in pairs:
+            params[name] = part
 
     for key in DROPPED:
         params.pop(key, None)
@@ -110,4 +128,6 @@ def is_filtered_on(context, param: str, value) -> bool:
     value = "" if value is None else str(value)
     if not param or not value:
         return False
-    return context["request"].GET.get(param, "") == value
+    pairs = _pairs(param, value)
+    query = context["request"].GET
+    return bool(pairs) and all(query.get(name, "") == part for name, part in pairs)

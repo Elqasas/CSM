@@ -197,7 +197,7 @@ def _renewal_year_quarters(ctx) -> dict:
         }
     )
     rows = [
-        (f"Q{quarter}", counted[f"q{quarter}"], f"{year}-{quarter}")
+        (f"Q{quarter}", counted[f"q{quarter}"], f"{quarter},{year}")
         for quarter in (1, 2, 3, 4)
     ]
     return {
@@ -207,7 +207,9 @@ def _renewal_year_quarters(ctx) -> dict:
         "chart": bars(rows, width=280.0, bar_height=24.0, gap=16.0),
         "rows": [(label, n) for label, n, _ in rows],
         "token": SERIES_1,
-        "filter_param": "renewal",
+        # Both halves of the page's renewal filter at once: a bar is that
+        # quarter *of the year drawn*, not that quarter in every year.
+        "filter_param": "rq,ry",
         "caption": f"Contract end dates in {year}: {sum(n for _, n, _ in rows)} in total.",
         "empty": f"No contract ends in {year} for this filter.",
         # The card's own year, like the renewals list's own quarter: the page

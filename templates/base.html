@@ -41,7 +41,7 @@
     {% if user.is_authenticated %}
       <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
         <div class="container-fluid">
-          <a class="navbar-brand" href="{% url 'dashboard:index' %}" title="Bousla home">
+          <a class="navbar-brand" href="{% if "myday.view" in ability.capabilities %}{% url 'dashboard:index' %}{% else %}{% url 'dashboard:analytics' %}{% endif %}" title="Bousla home">
             {% include "core/_brand_mark.html" %}
             <span class="brand-text">
               <span class="wordmark">BOUSLA</span>
@@ -55,7 +55,7 @@
           </button>
           <div class="collapse navbar-collapse" id="mainnav">
             <ul class="navbar-nav me-auto">
-              {% if "task.create" in ability.capabilities %}
+              {% if "myday.view" in ability.capabilities %}
                 <li class="nav-item">
                   <a class="nav-link {% if nav == 'dashboard' %}active{% endif %}"
                      href="{% url 'dashboard:index' %}">My day</a>

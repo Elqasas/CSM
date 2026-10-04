@@ -39,6 +39,9 @@ HEALTH_OVERRIDE = "health.override"
 LIFECYCLE_EDIT = "lifecycle.edit"
 
 DASHBOARD_VIEW = "dashboard.view"
+#: The "My day" landing page: one person's own queue. A manager owns no queue,
+#: so a manager lands on Analytics instead.
+MYDAY_VIEW = "myday.view"
 IMPORT_RUN = "import.run"
 EXPORT_RUN = "export.run"
 USER_MANAGE = "user.manage"
@@ -71,6 +74,7 @@ ALL = frozenset(
         HEALTH_OVERRIDE,
         LIFECYCLE_EDIT,
         DASHBOARD_VIEW,
+        MYDAY_VIEW,
         IMPORT_RUN,
         EXPORT_RUN,
         USER_MANAGE,

@@ -4,17 +4,12 @@
 {% block title %}Analytics{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h1 class="h4 mb-0">Analytics</h1>
-      <p class="text-body-secondary small mb-0">
-        Across the {{ cards.0.data.value }} account{{ cards.0.data.value|pluralize }}
-        you can see &middot; {{ today|date:"j M Y" }}
-      </p>
-    </div>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:index' %}">
-      My day
-    </a>
+  <div class="mb-3">
+    <h1 class="h4 mb-0">Analytics</h1>
+    <p class="text-body-secondary small mb-0">
+      Across the {{ cards.0.data.value }} account{{ cards.0.data.value|pluralize }}
+      you can see &middot; {{ today|date:"j M Y" }}
+    </p>
   </div>
 
   {% comment %}
@@ -23,11 +18,75 @@
   be an oracle, letting a reader who cannot see the health card infer the
   distribution from how the other cards' counts move.
   {% endcomment %}
-  <form method="get" class="card card-body mb-3">
-    <div class="row g-2 align-items-end">
-      <div class="col-6 col-md-4 col-xl-2">
+  {% comment %}
+  Health status, class and the renewal quarter are rows of buttons - the ones
+  people flick between, answered on one click. They are links that keep every
+  other parameter, like the Show and Period controls on Activities. Country,
+  CSM, ACM and the renewal year are lists, and submit as soon as they change;
+  the hidden inputs carry everything a list change must not drop, including
+  the filters a chart click applied and the cards' own selectors.
+  {% endcomment %}
+  <form method="get" class="card card-body mb-3 analytics-filters">
+    {% for name, value in hidden_filters %}
+      <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+
+    <div class="d-flex flex-wrap gap-4">
+      {% if shows_health %}
+        <div>
+          <span class="form-label d-block">Health status</span>
+          <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Health status">
+            <a class="btn btn-outline-secondary {% if not filters.status %}active{% endif %}"
+               href="{% set_filter 'status' '' %}">All</a>
+            {% for value, label in health_statuses %}
+              <a class="btn btn-outline-secondary {% if filters.status == value %}active{% endif %}"
+                 href="{% set_filter 'status' value %}"
+                 aria-pressed="{% if filters.status == value %}true{% else %}false{% endif %}">{{ label }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div>
+        <span class="form-label d-block">Class</span>
+        <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Class">
+          <a class="btn btn-outline-secondary {% if not filters.class %}active{% endif %}"
+             href="{% set_filter 'class' '' %}">All</a>
+          {% for value, label in account_classes %}
+            <a class="btn btn-outline-secondary {% if filters.class == value %}active{% endif %}"
+               href="{% set_filter 'class' value %}"
+               aria-pressed="{% if filters.class == value %}true{% else %}false{% endif %}">{{ label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <span class="form-label d-block">Renewal quarter</span>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="btn-group btn-group-sm seg-group" role="group" aria-label="Renewal quarter">
+            <a class="btn btn-outline-secondary {% if not filters.rq %}active{% endif %}"
+               href="{% set_filter 'rq' '' %}">All</a>
+            {% for value, label in quarters %}
+              <a class="btn btn-outline-secondary {% if filters.rq == value %}active{% endif %}"
+                 href="{% set_filter 'rq' value %}"
+                 aria-pressed="{% if filters.rq == value %}true{% else %}false{% endif %}">{{ label }}</a>
+            {% endfor %}
+          </div>
+          <label class="visually-hidden" for="f-ry">Renewal year</label>
+          <select class="form-select form-select-sm w-auto" id="f-ry" name="ry" onchange="this.form.submit()">
+            <option value="">Any year</option>
+            {% for year in renewal_years %}
+              <option value="{{ year }}" {% if filters.ry == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-2 align-items-end mt-1">
+      <div class="col-6 col-md-4 col-xl-3">
         <label class="form-label small" for="f-country">Country</label>
-        <select class="form-select form-select-sm" id="f-country" name="country">
+        <select class="form-select form-select-sm" id="f-country" name="country" onchange="this.form.submit()">
           <option value="">All countries</option>
           {% for code, name in countries %}
             <option value="{{ code }}" {% if filters.country == code %}selected{% endif %}>
@@ -37,35 +96,9 @@
         </select>
       </div>
 
-      <div class="col-6 col-md-4 col-xl-2">
-        <label class="form-label small" for="f-class">Class</label>
-        <select class="form-select form-select-sm" id="f-class" name="class">
-          <option value="">All classes</option>
-          {% for value, label in account_classes %}
-            <option value="{{ value }}" {% if filters.class == value %}selected{% endif %}>
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      {% if shows_health %}
-        <div class="col-6 col-md-4 col-xl-2">
-          <label class="form-label small" for="f-status">Health status</label>
-          <select class="form-select form-select-sm" id="f-status" name="status">
-            <option value="">Any status</option>
-            {% for value, label in health_statuses %}
-              <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>
-                {{ label }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-      {% endif %}
-
-      <div class="col-6 col-md-4 col-xl-2">
+      <div class="col-6 col-md-4 col-xl-3">
         <label class="form-label small" for="f-csm">CSM</label>
-        <select class="form-select form-select-sm" id="f-csm" name="csm">
+        <select class="form-select form-select-sm" id="f-csm" name="csm" onchange="this.form.submit()">
           <option value="">Any CSM</option>
           {% for value, label in csm_choices %}
             <option value="{{ value }}" {% if filters.csm == value %}selected{% endif %}>
@@ -75,9 +108,9 @@
         </select>
       </div>
 
-      <div class="col-6 col-md-4 col-xl-2">
+      <div class="col-6 col-md-4 col-xl-3">
         <label class="form-label small" for="f-acm">ACM</label>
-        <select class="form-select form-select-sm" id="f-acm" name="acm">
+        <select class="form-select form-select-sm" id="f-acm" name="acm" onchange="this.form.submit()">
           <option value="">Any ACM</option>
           {% for value, label in acm_choices %}
             <option value="{{ value }}" {% if filters.acm == value %}selected{% endif %}>
@@ -87,21 +120,14 @@
         </select>
       </div>
 
-      <div class="col-6 col-md-4 col-xl-2">
-        <label class="form-label small" for="f-renewal">Renewal quarter</label>
-        <select class="form-select form-select-sm" id="f-renewal" name="renewal">
-          <option value="">Any quarter</option>
-          {% for value, label in renewal_quarters %}
-            <option value="{{ value }}" {% if filters.renewal == value %}selected{% endif %}>
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
+      <noscript>
+        <div class="col-6 col-md-2">
+          <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+        </div>
+      </noscript>
     </div>
 
     <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
-      <button class="btn btn-sm btn-primary" type="submit">Apply</button>
       {% comment %}
       One chip per active filter, each removing only itself. Clicking a chart
       segment is a toggle while the segment is still on screen; narrow the page

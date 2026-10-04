@@ -94,7 +94,12 @@
       -webkit-text-stroke: 1px rgba(185, 197, 250, 0.55);
       paint-order: stroke fill;
     }
-    .login-brand-mark .brand-mark { width: 4.5rem; height: 4.5rem; }
+    .login-brand-mark .brand-mark { width: 4.5rem; height: 4.5rem; transition: transform 300ms ease; }
+    .login-brand-mark { display: inline-block; cursor: default; }
+    .login-brand-mark:hover .brand-mark { transform: rotate(-12deg); }
+    @media (prefers-reduced-motion: reduce) {
+      .login-brand-mark:hover .brand-mark { transform: none; }
+    }
     /* On navy the tile keeps the light-mode lapis in both themes; the dark
        theme's lifted step is for a dark *surface*, and the cut-outs here are
        always white. */
@@ -300,7 +305,9 @@
       }
 
       // A damped swing: starts at north, overshoots, settles on the card.
-      var NORTH = -Math.PI / 2, start = performance.now();
+      // `swung` is when the current swing began - the page opening, or the
+      // last time the pointer came onto the compass mark, which plays it again.
+      var NORTH = -Math.PI / 2, start = performance.now(), swung = start;
       function settle(target, t) {
         var delta = target - NORTH;
         var e = Math.exp(-t * 2.2) * Math.cos(t * 6.5);
@@ -320,7 +327,7 @@
         }
         rose(g, still ? 0 : t * 0.006);
         scrim();
-        needle(g, still ? g.target : settle(g.target, t));
+        needle(g, still ? g.target : settle(g.target, (now - swung) / 1000));
         if (!still) requestAnimationFrame(frame);
       }
 
@@ -330,6 +337,17 @@
         document.fonts.ready.then(function () { if (still) frame(performance.now()); });
       }
       requestAnimationFrame(frame);
+
+      // Hovering the mark replays the opening swing. Not while one is still
+      // under way - restarting mid-swing every time the pointer twitches would
+      // only make the needle stutter.
+      var mark = brand.querySelector(".login-brand-mark");
+      if (mark && !still) {
+        mark.addEventListener("mouseenter", function () {
+          var now = performance.now();
+          if (now - swung > 900) swung = now;
+        });
+      }
     })();
   </script>
 {% endblock %}

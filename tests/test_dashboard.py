@@ -744,7 +744,8 @@ def test_the_renewal_chart_draws_the_year_it_is_given(client, dash_people):
     assert card.data["rows"] == [("Q1", 1), ("Q2", 0), ("Q3", 1), ("Q4", 0)]
     assert "2027" in card.data["caption"]
     # And its bars still filter the page, to that year rather than to this one.
-    assert card.data["chart"].bars[0].key == "2027-1"
+    assert card.data["chart"].bars[0].key == "1,2027"
+    assert card.data["filter_param"] == "rq,ry"
 
 
 def test_a_year_nothing_renews_in_falls_back(client, dash_people):
@@ -1054,12 +1055,14 @@ def test_every_active_filter_is_named_in_words(client, mixed_portfolio, dash_peo
             "license": LicenseType.COMPLETE,
             "csm": dash_people["csm"].pk,
             "managed": "1",
-            "renewal": "2026-1",
+            "rq": "1",
+            "ry": "2026",
         },
     )
     labels = [chip["label"] for chip in response.context["active_filters"]]
     assert labels == [
-        "VIP", "Complete", "Managed service", "Renewing Q1 2026", "CSM: Casey Morgan",
+        "VIP", "Complete", "Managed service", "Renewing in Q1", "Renewing in 2026",
+        "CSM: Casey Morgan",
     ]
 
 
@@ -1079,6 +1082,15 @@ def toggle(query: str, param: str, value: str) -> str:
 
     request = RequestFactory().get(f"/analytics/{query}")
     return toggle_filter(Context({"request": request}), param, value)
+
+
+def test_a_paired_toggle_sets_and_clears_both_halves():
+    """A renewal bar is "Q3 of 2026": both parameters at once, and a second
+    click clears both. Only the quarter matching is not the same bar."""
+    assert toggle("?class=A", "rq,ry", "3,2026") == "/analytics/?class=A&rq=3&ry=2026"
+    assert toggle("?class=A&rq=3&ry=2026", "rq,ry", "3,2026") == "/analytics/?class=A"
+    assert toggle("?rq=3", "rq,ry", "3,2026") == "/analytics/?rq=3&ry=2026"
+    assert toggle("", "rq,ry", "3") == "", "mismatched halves are not a control"
 
 
 def test_the_toggle_sets_clears_and_preserves():
@@ -1165,13 +1177,40 @@ def test_the_renewal_quarter_filter_narrows_every_card(client, renewal_spread, d
 
     login(client, dash_people["csm"])
     response = client.get(
-        reverse("dashboard:analytics"), {"renewal": f"{today().year}-1"}
+        reverse("dashboard:analytics"), {"rq": "1", "ry": today().year}
     )
 
     total = next(c for c in response.context["cards"] if c.id == "total_accounts")
     roster = next(c for c in response.context["cards"] if c.id == "account_roster")
     assert total.data["value"] == 1
     assert [a.client_name for a in roster.data["accounts"]] == ["Renewal Q1"]
+
+
+def test_a_quarter_alone_spans_every_year_and_a_year_alone_every_quarter(
+    client, renewal_spread, dash_people
+):
+    """Q1-Q4 and the year are separate controls, each optional."""
+    from csm.core.clock import today
+
+    login(client, dash_people["csm"])
+
+    def names(query):
+        response = client.get(reverse("dashboard:analytics"), query)
+        roster = next(c for c in response.context["cards"] if c.id == "account_roster")
+        return sorted(a.client_name for a in roster.data["accounts"])
+
+    assert names({"rq": "2"}) == ["Renewal NEXT"], "next year's Q2 renewal"
+    assert names({"ry": today().year}) == ["Renewal Q1", "Renewal Q3", "Renewal Q4"]
+
+
+def test_the_renewal_filter_is_offered_as_buttons_and_a_year(client, renewal_spread, dash_people):
+    login(client, dash_people["csm"])
+    body = client.get(reverse("dashboard:analytics"), {"class": "A"}).content.decode()
+    for label in ("Q1", "Q2", "Q3", "Q4"):
+        assert f">{label}</a>" in body
+    assert 'name="ry"' in body
+    # A list change resubmits the form, which must not drop the class button.
+    assert '<input type="hidden" name="class" value="A">' in body
 
 
 def test_a_nonsense_renewal_quarter_leaves_the_page_alone(client, renewal_spread, dash_people):
@@ -1182,10 +1221,10 @@ def test_a_nonsense_renewal_quarter_leaves_the_page_alone(client, renewal_spread
     for.
     """
     login(client, dash_people["csm"])
-    for value in ("2026-9", "Q4", "", "--", "99999-1"):
-        response = client.get(reverse("dashboard:analytics"), {"renewal": value})
+    for query in ({"rq": "9"}, {"rq": "Q"}, {"ry": "--"}, {"ry": "99999"}, {"rq": ""}):
+        response = client.get(reverse("dashboard:analytics"), query)
         total = next(c for c in response.context["cards"] if c.id == "total_accounts")
-        assert total.data["value"] == 4, value
+        assert total.data["value"] == 4, query
 
 
 def test_the_renewal_quarter_options_survive_being_chosen(client, renewal_spread, dash_people):
@@ -1198,11 +1237,9 @@ def test_the_renewal_quarter_options_survive_being_chosen(client, renewal_spread
 
     login(client, dash_people["csm"])
     year = today().year
-    response = client.get(reverse("dashboard:analytics"), {"renewal": f"{year}-1"})
+    response = client.get(reverse("dashboard:analytics"), {"rq": "1", "ry": year})
 
-    assert [v for v, _ in response.context["renewal_quarters"]] == [
-        f"{year}-1", f"{year}-3", f"{year}-4", f"{year + 1}-2",
-    ]
+    assert response.context["renewal_years"] == [year, year + 1]
 
 
 def test_the_owner_filters_narrow_the_page(client, dash_portfolio, dash_people):
