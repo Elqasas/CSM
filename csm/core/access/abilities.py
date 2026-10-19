@@ -49,6 +49,7 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.MYDAY_VIEW,
             cap.IMPORT_RUN,
             cap.EXPORT_RUN,
+            cap.REPORT_VIEW,
         }
     ),
     Role.ACM.value: frozenset(
@@ -69,11 +70,14 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.EXPORT_RUN,
             # Deliberately absent: HEALTH_VIEW, HEALTH_OVERRIDE, LIFECYCLE_EDIT,
             # TICKET_EDIT, CSAT_RECORD, ADOPTION_RECORD, ACCOUNT_EDIT, NOTE_VIEW,
-            # NOTE_EDIT. An ACM owns
+            # NOTE_EDIT, REPORT_VIEW. An ACM owns
             # the commercial renewal and is kept clear of anything that signals
             # account health, and never edits the account record itself. Notes
             # are a CSM's free text about the client, the sort of place "they
             # sounded unhappy" gets written down, so they stay on the CSM side.
+            # EXPORT_RUN is held for the accounts and contacts sheets only; the
+            # date-ranged reports need REPORT_VIEW, which every one of them
+            # reads from the CSM side of the work.
             # IMPORT_RUN is held but narrowed to contacts only by
             # ``importable_kinds()`` below: the importer writes accounts
             # regardless of ``account.edit``, and an accounts import would
@@ -90,6 +94,7 @@ _MATRIX: dict[str, frozenset[str]] = {
             cap.NOTE_VIEW,
             cap.DASHBOARD_VIEW,
             cap.EXPORT_RUN,
+            cap.REPORT_VIEW,
             # Deliberately absent: MYDAY_VIEW. A manager holds no queue of their
             # own, so the landing page and the logo take them to Analytics.
         }

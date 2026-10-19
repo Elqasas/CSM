@@ -54,6 +54,7 @@ LOCAL_APPS = [
     "csm.dashboard",
     "csm.schedule",
     "csm.importer",
+    "csm.reports",
     "csm.integrations",
     "csm.meetings",
 ]

@@ -19,7 +19,7 @@ All commands assume the checked-in virtualenv. On Windows the interpreter is
 ### Tests and lint
 
 ```bash
-.venv/Scripts/python -m pytest                              # full suite, 1098 tests
+.venv/Scripts/python -m pytest                              # full suite, 1150 tests
 .venv/Scripts/python -m pytest tests/test_health_engine.py  # one file
 .venv/Scripts/python -m pytest tests/test_access.py::test_only_the_access_package_interprets_role_or_seniority
 .venv/Scripts/python -m pytest -k "csat and stale"          # by name
@@ -487,9 +487,8 @@ a manager to Analytics, and no page offers them My day.
 Also built: the **importer** (`/import/`, any CSM, CSM Senior or ACM — an ACM's
 `import.run` is narrowed by `Ability.importable_kinds()` to contacts only, since
 the importer writes accounts with no `account.edit` check of its own) for
-accounts and contacts as .xlsx or .csv; the **export** (`/import/export/`, every
-role) of the same two as a read-only, row-scoped .xlsx, with the health columns
-present only for a reader who holds `health.view`; **account
+accounts and contacts as .xlsx or .csv; **reports** (`/reports/`, see below),
+which replaced the export page and still serves the same two sheets; **account
 custom fields** (`/accounts/custom-fields/`, Admin-only to define, any editor
 to fill in) — free text, date/time or a dropdown list, named once and shown
 before Description on every account's form; **engagement entry**
@@ -516,6 +515,40 @@ Also built: the **Microsoft 365 calendar sync** (`csm/integrations/teams/`,
 `/integrations/microsoft/` for Admin) and the **calendar by the hour** - week and
 day views are a time grid with an all-day row, and an All / Platform /
 Microsoft 365 filter (`?source=`). See below.
+
+### Reports are cards with a period each
+
+`csm/reports/` is a registry like the dashboard's: each `Report` declares its
+capabilities and `visible_reports()` drops the rest; the page is one tab per
+report, like `/integrations/`, reached from Settings (not the top menu). The date-ranged ones (tasks & activities, health,
+renewals, portfolio by CSM) need `report.view`, which CSM, Manager and Admin hold and **an ACM does not**;
+the accounts and contacts sheets need only `export.run`, so an ACM still has
+those. Health needs `health.view` as well, and a mixed report adds health columns
+only for a reader who holds it.
+
+- **Builders start from the `Ability`**: `accounts()`, `visible_tasks()`,
+  `visible_activities()`. A period is business days, inclusive; a timestamp is
+  compared against `clock.start_of_business_day` instants, never a bare date.
+- **Tasks & activities is one report**, with a `show` option (all / completed /
+  upcoming). A completed row *is* the activity record, carrying the task it
+  closed - never the task and its record as two rows. Records with no task
+  (Teams) and done tasks with no record each add a row; voided records none.
+- **The health report exports each factor's record**, not only its points:
+  `FACTOR_RECORD` in `builders.py` maps the `detail` the engine stored on the
+  history row (open bugs, last contact, CSAT average...) to columns. It reads
+  the stored row and never recomputes, so a file shows what that run saw. A key
+  added to a factor's `detail` needs a line there to reach the export.
+- **`periods.resolve()` is pure** and takes `today`. A preset ignores the date
+  boxes; the custom range is capped at two years.
+- **Upcoming automatic tasks are projected** by `generators.project_auto_tasks`,
+  which writes nothing and uses the generators' own `renewal_checkpoints` and
+  `quarterly_lead_date`, so the forecast and the task created on the day agree.
+  It projects only days after today, and skips a key that exists in any state.
+- Every ranged file ends with an **About** sheet (period, who, when, scope). The
+  accounts and contacts sheets have none: they re-import, and the importer reads
+  only the first worksheet. All files go through `reports/workbook.py`.
+
+`/import/export/` redirects to `/reports/`.
 
 ### Outlook meetings and Teams attendance
 

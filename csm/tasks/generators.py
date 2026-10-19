@@ -8,6 +8,7 @@ moving a contract or meeting date is correctly treated as a new obligation.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -66,6 +67,20 @@ def quarterly_rollover_key(account_id: int, stale_date: date) -> str:
 # ---------------------------------------------------------------------------
 
 
+def renewal_checkpoints(end_date: date) -> list[tuple[int, date]]:
+    """Each reminder offset and the day it falls due, for one contract end date.
+
+    Shared by the generator and the projection below, so the forecast of
+    reminders that do not exist yet is the same arithmetic that will create them.
+    """
+    return [(offset, end_date - timedelta(days=offset)) for offset in RENEWAL_OFFSETS]
+
+
+def quarterly_lead_date(meeting_date: date) -> date:
+    """The day the quarterly meeting task is created and falls due."""
+    return meeting_date - timedelta(days=QUARTERLY_LEAD_DAYS)
+
+
 def generate_renewal_tasks(*, as_of: date | None = None) -> int:
     """Create the renewal checkpoints that fall due today.
 
@@ -83,8 +98,7 @@ def generate_renewal_tasks(*, as_of: date | None = None) -> int:
         .filter(contract_end_date__gte=as_of)
     )
     for account in accounts:
-        for offset in RENEWAL_OFFSETS:
-            trigger_date = account.contract_end_date - timedelta(days=offset)
+        for offset, trigger_date in renewal_checkpoints(account.contract_end_date):
             earliest = as_of - timedelta(days=RENEWAL_CATCHUP_DAYS)
             if not (earliest <= trigger_date <= as_of):
                 continue
@@ -166,7 +180,7 @@ def generate_quarterly_tasks(*, as_of: date | None = None) -> int:
     )
     for account in accounts:
         meeting_date = account.quarterly_meeting_date
-        lead_date = meeting_date - timedelta(days=QUARTERLY_LEAD_DAYS)
+        lead_date = quarterly_lead_date(meeting_date)
 
         if lead_date <= as_of <= meeting_date:
             task = create_task(
@@ -217,6 +231,79 @@ def cancel_stale_quarterly_tasks(account: Account, previous_date: date | None) -
         cancel_task(task, reason=TaskCloseReason.MEETING_DATE_CHANGED)
         cancelled += 1
     return cancelled
+
+
+# ---------------------------------------------------------------------------
+# Projection
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProjectedTask:
+    """A generated task that will exist on ``due_date`` but does not yet."""
+
+    account: Account
+    task_type: str
+    title: str
+    due_date: date
+    auto_key: str
+
+
+def project_auto_tasks(accounts, start: date, end: date, *, as_of: date) -> list[ProjectedTask]:
+    """The renewal and quarterly tasks the generators will create in a window.
+
+    The generators only create a task on the day it falls due, so a renewal
+    reminder for March is not in the table in October and a query of open tasks
+    cannot see it. This answers the forward question with the generators' own
+    dates. It writes nothing.
+
+    Only days after ``as_of`` are projected - today's run has already happened -
+    and a key that already exists in any state is skipped, because the generator
+    would skip it too. Rollover nudges and health alerts depend on what happens
+    between now and then, so they are never projected.
+    """
+    first = max(start, as_of + timedelta(days=1))
+    if first > end:
+        return []
+
+    candidates: list[ProjectedTask] = []
+    eligible = accounts.exclude(lifecycle_stage__in=list(NO_REMINDER_STAGES))
+
+    for account in eligible.exclude(contract_end_date__isnull=True):
+        for offset, trigger_date in renewal_checkpoints(account.contract_end_date):
+            if first <= trigger_date <= end:
+                candidates.append(
+                    ProjectedTask(
+                        account=account,
+                        task_type=TaskType.AUTO_RENEWAL,
+                        title=f"Renewal in {offset} days: {account.client_name}",
+                        due_date=trigger_date,
+                        auto_key=renewal_key(account.pk, account.contract_end_date, offset),
+                    )
+                )
+
+    for account in eligible.exclude(quarterly_meeting_date__isnull=True):
+        lead_date = quarterly_lead_date(account.quarterly_meeting_date)
+        if first <= lead_date <= end:
+            candidates.append(
+                ProjectedTask(
+                    account=account,
+                    task_type=TaskType.AUTO_QUARTERLY_MEETING,
+                    title=f"Quarterly meeting: {account.client_name}",
+                    due_date=lead_date,
+                    auto_key=quarterly_key(account.pk, account.quarterly_meeting_date),
+                )
+            )
+
+    existing = set(
+        Task.objects.filter(auto_key__in=[c.auto_key for c in candidates]).values_list(
+            "auto_key", flat=True
+        )
+    )
+    return sorted(
+        (c for c in candidates if c.auto_key not in existing),
+        key=lambda c: (c.due_date, c.account.client_name),
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -53,12 +53,12 @@ def workbook_rows(content: bytes):
 @pytest.mark.parametrize("who", ["csm", "senior", "manager", "acm"])
 def test_everyone_may_reach_the_export_page(client, staff, who):
     login(client, staff[who])
-    assert client.get(reverse("importer:export")).status_code == 200
+    assert client.get(reverse("reports:index")).status_code == 200
 
 
 def test_an_acms_accounts_export_carries_no_health_column(client, staff, portfolio):
     login(client, staff["acm"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
     rows = workbook_rows(response.content)
     assert "Health Status" not in rows[0]
     assert "Health Score" not in rows[0]
@@ -66,7 +66,7 @@ def test_an_acms_accounts_export_carries_no_health_column(client, staff, portfol
 
 def test_a_plain_csm_only_exports_their_own_portfolio(client, staff, portfolio):
     login(client, staff["csm"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
     rows = workbook_rows(response.content)
 
     codes = [row[0] for row in rows[1:]]
@@ -75,7 +75,7 @@ def test_a_plain_csm_only_exports_their_own_portfolio(client, staff, portfolio):
 
 def test_a_senior_csm_exports_the_whole_portfolio(client, staff, portfolio):
     login(client, staff["senior"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
     rows = workbook_rows(response.content)
 
     codes = {row[0] for row in rows[1:]}
@@ -84,7 +84,7 @@ def test_a_senior_csm_exports_the_whole_portfolio(client, staff, portfolio):
 
 def test_the_accounts_export_names_the_csm_by_email(client, staff, portfolio):
     login(client, staff["senior"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
     rows = workbook_rows(response.content)
 
     header = list(rows[0])
@@ -103,7 +103,7 @@ def test_the_contacts_export_is_scoped_the_same_way(client, staff, portfolio):
     )
 
     login(client, staff["csm"])
-    response = client.get(reverse("importer:export_download", args=["contacts"]))
+    response = client.get(reverse("reports:download", args=["contacts"]))
     rows = workbook_rows(response.content)
 
     names = [row[1] for row in rows[1:]]
@@ -115,7 +115,7 @@ def test_the_contacts_export_header_matches_the_import_template(client, staff, p
     from csm.importer.template import header_label
 
     login(client, staff["csm"])
-    response = client.get(reverse("importer:export_download", args=["contacts"]))
+    response = client.get(reverse("reports:download", args=["contacts"]))
     header = list(workbook_rows(response.content)[0])
 
     expected = [header_label(field, CONTACT_COLUMNS) for field in CONTACT_COLUMNS]
@@ -173,10 +173,10 @@ def test_an_unedited_contacts_export_reimports_clean(portfolio, staff):
 
 def test_the_download_is_a_readable_workbook(client, staff, portfolio):
     login(client, staff["senior"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
 
     assert response.status_code == 200
-    assert "accounts-export.xlsx" in response["Content-Disposition"]
+    assert response["Content-Disposition"].startswith('attachment; filename="accounts_')
     assert response.content
 
 
@@ -188,7 +188,7 @@ def test_the_accounts_export_header_matches_the_import_template(client, staff, p
     from csm.importer.template import header_label
 
     login(client, staff["senior"])
-    response = client.get(reverse("importer:export_download", args=["accounts"]))
+    response = client.get(reverse("reports:download", args=["accounts"]))
     header = list(workbook_rows(response.content)[0])
 
     expected = [header_label(field) for field in COLUMNS]

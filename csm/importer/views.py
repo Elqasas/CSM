@@ -1,4 +1,4 @@
-"""The import wizard - upload, preview, apply - and the exports beside it.
+"""The import wizard - upload, preview, apply.
 
 Every import view requires ``import.run``, held by any CSM and by an ACM. It
 writes across the whole portfolio regardless of who owns which account, which
@@ -12,11 +12,9 @@ capability alone.
 The preview step is not a courtesy. It is what makes the import reversible in
 the only sense that matters: you find out before the write, not after.
 
-The export views below share this module because they share its column
-tables, but answer to a separate ``export.run`` capability (held by every role)
-and, unlike import, always start from ``ability.accounts()`` - an export is
-read-only, so row scope applies exactly the way it does everywhere else, and
-the health columns are appended only for a reader who holds ``health.view``.
+Exporting moved to the Reports page (``csm/reports``), which still builds the
+accounts and contacts sheets from ``importer/export.py`` so they keep this
+module's column tables.
 """
 
 from __future__ import annotations
@@ -25,14 +23,12 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.views.generic import DetailView, FormView, ListView, TemplateView, View
+from django.views.generic import DetailView, FormView, ListView, View
 
-from csm.contacts.models import Contact
 from csm.core.access import capabilities as cap
 from csm.core.clock import today
 from csm.core.views import CapabilityRequiredMixin
-from csm.importer import contact_services, export, services
+from csm.importer import contact_services, services
 from csm.importer.csv_template import build_accounts_csv, build_contacts_csv
 from csm.importer.forms import UploadForm
 from csm.importer.models import ImportBatch, ImportKind, ImportStatus
@@ -204,44 +200,3 @@ class ImportTemplateView(CapabilityRequiredMixin, View):
             f'attachment; filename="{kind}-template.{fmt}"'
         )
         return response
-
-
-# ---------------------------------------------------------------------------
-# Export
-# ---------------------------------------------------------------------------
-
-
-class ExportPageView(CapabilityRequiredMixin, TemplateView):
-    required_capability = cap.EXPORT_RUN
-    template_name = "importer/export.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["nav"] = "export"
-        return context
-
-
-class ExportDownloadView(CapabilityRequiredMixin, View):
-    """The current data, not a template - one row per account or contact this
-    reader may see."""
-
-    required_capability = cap.EXPORT_RUN
-    XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-    def get(self, request, kind="accounts"):
-        if kind == "contacts":
-            queryset = Contact.objects.filter(account__in=self.ability.accounts())
-            content = export.build_contacts_xlsx(queryset)
-        else:
-            content = export.build_accounts_xlsx(
-                self.ability.accounts(),
-                include_health=self.ability.can(cap.HEALTH_VIEW),
-                custom_fields=active_custom_fields(),
-            )
-
-        response = HttpResponse(content, content_type=self.XLSX)
-        response["Content-Disposition"] = f'attachment; filename="{kind}-export.xlsx"'
-        return response
-
-    def get_success_url(self):
-        return reverse("importer:list")

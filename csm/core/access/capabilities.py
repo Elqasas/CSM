@@ -44,6 +44,10 @@ DASHBOARD_VIEW = "dashboard.view"
 MYDAY_VIEW = "myday.view"
 IMPORT_RUN = "import.run"
 EXPORT_RUN = "export.run"
+#: The date-ranged reports: tasks, activities, health, renewals. Separate from
+#: ``export.run``, which an ACM holds for the accounts and contacts sheets alone -
+#: every report under this one reads the CSM side of the work.
+REPORT_VIEW = "report.view"
 USER_MANAGE = "user.manage"
 CUSTOM_FIELD_MANAGE = "custom_field.manage"
 INTEGRATION_MANAGE = "integration.manage"
@@ -77,6 +81,7 @@ ALL = frozenset(
         MYDAY_VIEW,
         IMPORT_RUN,
         EXPORT_RUN,
+        REPORT_VIEW,
         USER_MANAGE,
         CUSTOM_FIELD_MANAGE,
         INTEGRATION_MANAGE,

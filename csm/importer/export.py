@@ -10,8 +10,6 @@ how to render whatever queryset it is handed.
 
 from __future__ import annotations
 
-import io
-
 from csm.importer.contact_parsing import CONTACT_COLUMNS
 from csm.importer.parsing import (
     COLUMNS,
@@ -19,6 +17,7 @@ from csm.importer.parsing import (
     account_columns,
 )
 from csm.importer.template import header_label
+from csm.reports.workbook import Sheet, build_workbook
 
 #: Every built-in field the accounts importer reads, in the same order as
 #: ``parsing.COLUMNS`` - which is the add/edit form's order. Not a database
@@ -129,32 +128,10 @@ def _contact_row(contact, fields) -> list:
     return row
 
 
-def _workbook(headers: list, rows: list) -> bytes:
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
-
-    workbook = Workbook()
-    sheet = workbook.active
-    bold = Font(bold=True)
-
-    for index, label in enumerate(headers, start=1):
-        cell = sheet.cell(row=1, column=index, value=label)
-        cell.font = bold
-        sheet.column_dimensions[cell.column_letter].width = max(14, min(30, len(label) + 4))
-    sheet.freeze_panes = "A2"
-
-    for row_index, values in enumerate(rows, start=2):
-        for col_index, value in enumerate(values, start=1):
-            cell = sheet.cell(row=row_index, column=col_index, value=value)
-            # openpyxl stores any string starting with "=" as a formula, so a
-            # description reading "=== renewal notes" would reach Excel as a
-            # broken formula - or a live one. Free text stays text.
-            if isinstance(value, str) and value.startswith("="):
-                cell.data_type = "s"
-
-    buffer = io.BytesIO()
-    workbook.save(buffer)
-    return buffer.getvalue()
+def _workbook(title: str, headers: list, rows: list) -> bytes:
+    # One sheet and no "About" page: these two are meant to be edited and
+    # imported back, and the importer reads only the first worksheet.
+    return build_workbook([Sheet(title, headers, rows)])
 
 
 def build_accounts_xlsx(queryset, *, include_health: bool, custom_fields=()) -> bytes:
@@ -168,7 +145,7 @@ def build_accounts_xlsx(queryset, *, include_health: bool, custom_fields=()) -> 
         .prefetch_related("custom_field_values")
         .order_by("client_name")
     ]
-    return _workbook(headers, rows)
+    return _workbook("Accounts", headers, rows)
 
 
 def build_contacts_xlsx(queryset) -> bytes:
@@ -179,4 +156,4 @@ def build_contacts_xlsx(queryset) -> bytes:
         .prefetch_related("channels")
         .order_by("account__client_name", "full_name")
     ]
-    return _workbook(headers, rows)
+    return _workbook("Contacts", headers, rows)
