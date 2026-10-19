@@ -653,7 +653,7 @@ def test_the_settings_page_shows_only_what_the_reader_can_do(client, portfolio, 
     assert reverse("schedule:settings") in page
     assert reverse("users:display_settings") in page
     assert reverse("importer:list") in page
-    assert reverse("importer:export") in page
+    assert reverse("reports:index") in page
     assert reverse("users:staff_list") not in page
 
 
@@ -663,7 +663,7 @@ def test_the_settings_page_holds_only_what_the_reader_may_reach(client, portfoli
     page = client.get(reverse("settings")).content.decode()
 
     assert reverse("importer:list") in page
-    assert reverse("importer:export") in page
+    assert reverse("reports:index") in page
     assert reverse("users:staff_list") not in page
 
 
@@ -672,7 +672,7 @@ def test_an_acm_sees_import_and_export_on_settings(client, portfolio, people):
     page = client.get(reverse("settings")).content.decode()
 
     assert reverse("importer:list") in page
-    assert reverse("importer:export") in page
+    assert reverse("reports:index") in page
 
 
 def test_row_menus_are_positioned_against_the_viewport(client, portfolio, people):

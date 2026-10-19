@@ -16,6 +16,7 @@ urlpatterns = [
     path("tasks/", include("csm.tasks.urls")),
     path("health/", include("csm.health.urls")),
     path("import/", include("csm.importer.urls")),
+    path("reports/", include("csm.reports.urls")),
     path("engagement/", include("csm.engagement.urls")),
     path("notifications/", include("csm.notifications.urls")),
     path("integrations/", include("csm.integrations.urls")),

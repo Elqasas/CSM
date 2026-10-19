@@ -80,16 +80,21 @@
         </div>
       {% endif %}
 
-      {% if "export.run" in ability.capabilities %}
+      {% if "export.run" in ability.capabilities or "report.view" in ability.capabilities %}
         <div class="col-12 col-md-6 col-xl-4">
           <a class="card h-100 text-decoration-none settings-card"
-             href="{% url 'importer:export' %}">
+             href="{% url 'reports:index' %}">
             <div class="card-body">
-              <div class="settings-icon"><i class="bi bi-download"></i></div>
-              <div class="fw-medium">Export</div>
+              <div class="settings-icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+              <div class="fw-medium">Reports</div>
               <p class="small text-body-secondary mb-0">
-                Accounts and contacts, scoped to what you may already see, as
-                a spreadsheet.
+                {% if "report.view" in ability.capabilities %}
+                  Tasks, activities, health and renewals for any period, plus
+                  accounts and contacts, as Excel.
+                {% else %}
+                  Accounts and contacts, scoped to what you may already see, as
+                  a spreadsheet.
+                {% endif %}
               </p>
             </div>
           </a>

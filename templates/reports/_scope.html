@@ -1,0 +1,13 @@
+<div class="card">
+  <div class="card-header">Scope</div>
+  <div class="card-body">
+    <dl class="row small mb-0">
+      <dt class="col-5">Accounts</dt>
+      <dd class="col-7">{{ accounts_in_scope }}, the ones you can already see</dd>
+      <dt class="col-5">Health</dt>
+      <dd class="col-7">{% if shows_health %}Included{% else %}Not included{% endif %}</dd>
+      <dt class="col-5">Dates</dt>
+      <dd class="col-7 mb-0">Business days in Cairo, both ends included</dd>
+    </dl>
+  </div>
+</div>

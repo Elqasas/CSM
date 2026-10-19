@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+  <h1 class="h4 mb-3">Reports</h1>
+
+  {% comment %}
+  One tab per report, switched in place, the way the Integrations page holds one
+  connection per tab. Every pane is rendered up front - there are six at most -
+  so switching costs no request, and the address bar follows the open tab so a
+  reload or a shared link lands on the same one.
+  {% endcomment %}
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    {% for tab in tabs %}
+      <li class="nav-item" role="presentation">
+        <button class="nav-link {% if tab.key == active_tab %}active{% endif %}"
+                id="tab-{{ tab.key }}" type="button" role="tab"
+                data-bs-toggle="tab" data-bs-target="#pane-{{ tab.key }}"
+                data-report-tab="{{ tab.key }}"
+                aria-controls="pane-{{ tab.key }}"
+                aria-selected="{% if tab.key == active_tab %}true{% else %}false{% endif %}">
+          <i class="bi {{ tab.icon }} me-1" aria-hidden="true"></i>{{ tab.title }}
+        </button>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tab-content">
+    {% for tab in tabs %}
+      <div class="tab-pane fade {% if tab.key == active_tab %}show active{% endif %}"
+           id="pane-{{ tab.key }}" role="tabpanel" aria-labelledby="tab-{{ tab.key }}">
+        {% with card=tab.cards.0 %}
+          {% if card.report.default_period %}
+            {% with report=card.report %}
+              <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                  <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <span><i class="bi {{ report.icon }} me-2" aria-hidden="true"></i>{{ report.title }}</span>
+                      <span class="badge text-bg-secondary">Excel</span>
+                    </div>
+                    <div class="card-body">
+                      <p class="text-body-secondary small">{{ report.description }}</p>
+
+                      {% comment %}
+                      A GET form: a report is a read. The two date boxes always
+                      show the range the chosen preset means; editing either
+                      switches the menu to Custom range, the only time the server
+                      reads them.
+                      {% endcomment %}
+                      <form method="get" action="{% url 'reports:download' report.key %}"
+                            data-report-form novalidate>
+                        {% for item in card.options %}
+                          <div class="mb-3">
+                            <div class="form-label">{{ item.option.label }}</div>
+                            <div class="btn-group flex-wrap" role="group" aria-label="{{ item.option.label }}">
+                              {% for value, label in item.option.choices %}
+                                <input type="radio" class="btn-check" name="{{ item.option.name }}"
+                                       id="{{ report.key }}-{{ item.option.name }}-{{ value }}"
+                                       value="{{ value }}" autocomplete="off"
+                                       {% if value == item.value %}checked{% endif %}>
+                                <label class="btn btn-sm btn-outline-primary"
+                                       for="{{ report.key }}-{{ item.option.name }}-{{ value }}">{{ label }}</label>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        {% endfor %}
+
+                        <div class="mb-3">
+                          <label class="form-label" for="period-{{ report.key }}">Period</label>
+                          <select class="form-select" name="period" id="period-{{ report.key }}" data-period>
+                            {% for key, label, start, end in presets %}
+                              <option value="{{ key }}" data-start="{{ start|date:'Y-m-d' }}"
+                                      data-end="{{ end|date:'Y-m-d' }}"
+                                      {% if key == card.period %}selected{% endif %}>
+                                {{ label }}
+                              </option>
+                            {% endfor %}
+                            <option value="{{ custom }}" {% if card.period == custom %}selected{% endif %}>
+                              Custom range
+                            </option>
+                          </select>
+                        </div>
+                        <div class="row g-3 mb-3">
+                          <div class="col-6">
+                            <label class="form-label" for="from-{{ report.key }}">From</label>
+                            <input class="form-control" type="date" name="from" id="from-{{ report.key }}"
+                                   data-from value="{{ card.start|date:'Y-m-d'|default:card.start }}">
+                          </div>
+                          <div class="col-6">
+                            <label class="form-label" for="to-{{ report.key }}">To</label>
+                            <input class="form-control" type="date" name="to" id="to-{{ report.key }}"
+                                   data-to value="{{ card.end|date:'Y-m-d'|default:card.end }}">
+                          </div>
+                        </div>
+
+                        {% if card.error %}
+                          <div class="alert alert-danger small" role="alert">{{ card.error }}</div>
+                        {% endif %}
+
+                        <button class="btn btn-primary" type="submit">
+                          <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Download Excel
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-5">
+                  <div class="card mb-4">
+                    <div class="card-header">What's in the file</div>
+                    <ul class="list-group list-group-flush">
+                      {% for line in report.contents %}
+                        <li class="list-group-item small">
+                          <i class="bi bi-table me-2 text-body-secondary" aria-hidden="true"></i>{{ line }}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                  {% include "reports/_scope.html" %}
+                </div>
+              </div>
+            {% endwith %}
+          {% else %}
+            <div class="row g-4">
+              <div class="col-12 col-lg-7">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi {{ tab.icon }} me-2" aria-hidden="true"></i>{{ tab.title }}</span>
+                    <span class="badge text-bg-secondary">As of today</span>
+                  </div>
+                  <ul class="list-group list-group-flush">
+                    {% for item in tab.cards %}
+                      <li class="list-group-item d-flex gap-3 align-items-start py-3">
+                        <div class="settings-icon mb-0"><i class="bi {{ item.report.icon }}" aria-hidden="true"></i></div>
+                        <div class="flex-grow-1">
+                          <div class="fw-medium">{{ item.report.title }}</div>
+                          <p class="small text-body-secondary mb-0">{{ item.report.description }}</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary text-nowrap"
+                           href="{% url 'reports:download' item.report.key %}">
+                          <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Download
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+              <div class="col-12 col-lg-5">
+                <div class="card mb-4">
+                  <div class="card-header">Editing and importing back</div>
+                  <div class="card-body small text-body-secondary">
+                    These two have no period: they are what exists right now. The
+                    columns are the import sheet's, in the same order, so a copy
+                    edited in Excel can go straight back through Import.
+                  </div>
+                </div>
+                {% include "reports/_scope.html" %}
+              </div>
+            </div>
+          {% endif %}
+        {% endwith %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.querySelectorAll("[data-report-form]").forEach(function (form) {
+      var menu = form.querySelector("[data-period]");
+      var from = form.querySelector("[data-from]");
+      var to = form.querySelector("[data-to]");
+      menu.addEventListener("change", function () {
+        var option = menu.options[menu.selectedIndex];
+        if (option.dataset.start) {
+          from.value = option.dataset.start;
+          to.value = option.dataset.end;
+        }
+      });
+      [from, to].forEach(function (box) {
+        box.addEventListener("change", function () { menu.value = "{{ custom }}"; });
+      });
+    });
+    document.querySelectorAll("[data-report-tab]").forEach(function (button) {
+      button.addEventListener("shown.bs.tab", function () {
+        var url = new URL(window.location.href);
+        url.searchParams.set("report", button.dataset.reportTab);
+        window.history.replaceState(null, "", url.pathname + url.search);
+      });
+    });
+  </script>
+{% endblock %}
